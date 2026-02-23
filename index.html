@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="mobile-web-app-capable" content="yes">
+<title>VozMail</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --border: #1e1e2e;
+    --accent: #e8ff57;
+    --text: #e8e8f0;
+    --muted: #5a5a7a;
+    --red: #ff4444;
+    --green: #25D366;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 36px 20px 40px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body::before {
+    content:'';
+    position:fixed;
+    inset:0;
+    background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(232,255,87,0.04) 0%, transparent 70%);
+    pointer-events:none;
+    z-index:0;
+  }
+  .content { position:relative; z-index:1; width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; }
+
+  header { width:100%; display:flex; align-items:center; justify-content:space-between; margin-bottom:32px; }
+  .logo { font-size:24px; font-weight:800; letter-spacing:-0.5px; }
+  .logo span { color:var(--accent); }
+  .email-badge { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); background:var(--surface); border:1px solid var(--border); padding:6px 12px; border-radius:20px; max-width:175px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* Transcript box */
+  .transcript-area {
+    width:100%;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:20px;
+    min-height:160px;
+    max-height:240px;
+    overflow-y:auto;
+    margin-bottom:20px;
+    transition:border-color 0.3s;
+    position:relative;
+  }
+  .transcript-area.has-text { border-color:rgba(232,255,87,0.25); }
+  .transcript-placeholder { font-family:'DM Mono',monospace; font-size:13px; color:var(--muted); font-style:italic; line-height:1.7; }
+  .transcript-text { font-family:'DM Mono',monospace; font-size:15px; line-height:1.7; white-space:pre-wrap; word-break:break-word; }
+  .interim { color:var(--muted); font-style:italic; }
+
+  /* Status */
+  .status {
+    font-family:'DM Mono',monospace;
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:28px;
+    height:20px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    transition:all 0.3s;
+  }
+  .status-dot { width:7px; height:7px; border-radius:50%; background:var(--muted); flex-shrink:0; transition:all 0.3s; }
+  .status.recording .status-dot { background:var(--red); animation:pulse 1.2s infinite; }
+  .status.recording { color:var(--red); }
+  .status.ready .status-dot { background:var(--accent); }
+  .status.ready { color:var(--accent); }
+  @keyframes pulse {
+    0%,100% { box-shadow:0 0 0 0 rgba(255,68,68,0.4); }
+    50% { box-shadow:0 0 0 6px rgba(255,68,68,0); }
+  }
+
+  /* Big mic button - WhatsApp style */
+  .mic-area {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    margin-bottom:28px;
+    width:100%;
+  }
+
+  .mic-hint {
+    font-family:'DM Mono',monospace;
+    font-size:12px;
+    color:var(--muted);
+    letter-spacing:0.05em;
+  }
+
+  .mic-btn {
+    width:100%;
+    height:72px;
+    border-radius:36px;
+    border:2px solid var(--border);
+    background:var(--surface);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    cursor:pointer;
+    outline:none;
+    transition:all 0.15s;
+    -webkit-appearance:none;
+    touch-action:none;
+  }
+
+  .mic-btn.pressing {
+    background:rgba(255,68,68,0.1);
+    border-color:var(--red);
+    transform:scale(0.98);
+  }
+
+  .mic-btn-icon {
+    width:44px; height:44px;
+    border-radius:50%;
+    background:var(--red);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:all 0.15s;
+    flex-shrink:0;
+  }
+
+  .mic-btn.pressing .mic-btn-icon {
+    background:var(--red);
+    box-shadow:0 0 0 8px rgba(255,68,68,0.2);
+  }
+
+  .mic-btn-text {
+    font-size:15px;
+    font-weight:700;
+    color:var(--text);
+    transition:color 0.15s;
+  }
+
+  .mic-btn.pressing .mic-btn-text { color:var(--red); }
+
+  /* Waveform inside button */
+  .waveform { display:none; align-items:center; gap:3px; height:24px; }
+  .mic-btn.pressing .waveform { display:flex; }
+  .mic-btn.pressing .mic-btn-text-static { display:none; }
+  .wave-bar { width:3px; background:var(--red); border-radius:2px; animation:wave 1.2s ease-in-out infinite; }
+  .wave-bar:nth-child(1){height:6px;animation-delay:0s}
+  .wave-bar:nth-child(2){height:14px;animation-delay:.1s}
+  .wave-bar:nth-child(3){height:20px;animation-delay:.2s}
+  .wave-bar:nth-child(4){height:12px;animation-delay:.3s}
+  .wave-bar:nth-child(5){height:18px;animation-delay:.15s}
+  @keyframes wave { 0%,100%{transform:scaleY(0.4)} 50%{transform:scaleY(1)} }
+
+  /* Subject */
+  .subject-preview { width:100%; background:rgba(232,255,87,0.04); border:1px solid rgba(232,255,87,0.15); border-radius:12px; padding:14px 18px; margin-bottom:16px; display:none; }
+  .subject-preview.visible { display:block; }
+  .subject-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.15em; text-transform:uppercase; color:var(--accent); margin-bottom:6px; display:block; }
+  .subject-value { font-size:14px; font-weight:600; line-height:1.4; }
+
+  /* Send */
+  .send-btn { width:100%; padding:20px; background:var(--accent); color:#0a0a0f; border:none; border-radius:14px; font-family:'Syne',sans-serif; font-size:17px; font-weight:800; cursor:pointer; display:none; align-items:center; justify-content:center; gap:10px; outline:none; transition:all 0.2s; margin-bottom:12px; }
+  .send-btn.visible { display:flex; }
+  .send-btn:active { transform:scale(0.97); }
+
+  .clear-btn { width:100%; padding:14px; background:transparent; color:var(--muted); border:1px solid var(--border); border-radius:14px; font-family:'DM Mono',monospace; font-size:13px; cursor:pointer; display:none; transition:all 0.2s; }
+  .clear-btn.visible { display:block; }
+
+  /* Error */
+  .error-box { width:100%; background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.2); border-radius:12px; padding:14px 18px; margin-bottom:16px; display:none; }
+  .error-box.visible { display:block; }
+  .error-text { font-family:'DM Mono',monospace; font-size:12px; color:#ff6b6b; line-height:1.8; white-space:pre-wrap; }
+
+  .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--surface); border:1px solid var(--border); color:var(--text); font-family:'DM Mono',monospace; font-size:13px; padding:12px 20px; border-radius:24px; opacity:0; transition:all 0.3s; white-space:nowrap; z-index:200; pointer-events:none; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<div class="content">
+
+  <header>
+    <div class="logo">Voz<span>Mail</span></div>
+    <div class="email-badge"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="75191401101a071c14111019031c11101a1f0010121a351218141c195b161a18">[email&#160;protected]</a></div>
+  </header>
+
+  <div class="transcript-area" id="transcriptArea">
+    <div class="transcript-placeholder" id="placeholder">Mantén pulsado el botón rojo y habla. Suelta cuando termines.</div>
+    <div class="transcript-text" id="transcriptText"></div>
+  </div>
+
+  <div class="status" id="status">
+    <div class="status-dot"></div>
+    <span id="statusMsg">Listo</span>
+  </div>
+
+  <div class="mic-area">
+    <div class="mic-hint">Mantén pulsado para grabar · Suelta para parar</div>
+    <button class="mic-btn" id="micBtn">
+      <div class="mic-btn-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <rect x="9" y="2" width="6" height="11" rx="3" fill="white"/>
+          <path d="M5 11C5 14.866 8.134 18 12 18C15.866 18 19 14.866 19 11" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M12 18V22M9 22H15" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="mic-btn-text">
+        <span class="mic-btn-text-static">🔴 Mantén pulsado para grabar</span>
+        <span class="waveform">
+          <span class="wave-bar"></span><span class="wave-bar"></span>
+          <span class="wave-bar"></span><span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+        </span>
+      </span>
+    </button>
+  </div>
+
+  <div class="error-box" id="errorBox">
+    <div class="error-text" id="errorText"></div>
+  </div>
+
+  <div class="subject-preview" id="subjectPreview">
+    <span class="subject-label">Asunto del email</span>
+    <div class="subject-value" id="subjectValue"></div>
+  </div>
+
+  <button class="send-btn" id="sendBtn" onclick="sendEmail()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" stroke="#0a0a0f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Enviar por Email
+  </button>
+  <button class="clear-btn" id="clearBtn" onclick="clearAll()">✕ Borrar y repetir</button>
+
+</div>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  const USER_EMAIL = 'lateoriadelvideojuego@gmail.com';
+  let recognition = null;
+  let isRecording = false;
+  let finalTranscript = '';
+  let pressTimer = null;
+
+  const micBtn = document.getElementById('micBtn');
+
+  // Touch events (móvil)
+  micBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); }, { passive: false });
+  micBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); }, { passive: false });
+  micBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); stopRecording(); }, { passive: false });
+
+  // Mouse events (PC)
+  micBtn.addEventListener('mousedown', startRecording);
+  micBtn.addEventListener('mouseup', stopRecording);
+  micBtn.addEventListener('mouseleave', () => { if (isRecording) stopRecording(); });
+
+  function startRecording() {
+    if (isRecording) return;
+    finalTranscript = '';
+    clearTranscript();
+    hideResults();
+    hideError();
+
+    // Primero pedir permiso explícito
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        stream.getTracks().forEach(t => t.stop());
+        startSpeechRecognition();
+      })
+      .catch(err => {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          showError('Micrófono bloqueado.\n\nVe a: Ajustes Android → Apps → Chrome → Permisos → Micrófono → Permitir\n\nDespués recarga la página.');
+        } else if (err.name === 'NotFoundError') {
+          // Intentar directamente con SpeechRecognition si getUserMedia falla
+          startSpeechRecognition();
+        } else {
+          showError('Error: ' + err.name + '\n' + err.message);
+        }
+      });
+  }
+
+  function startSpeechRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      showError('Reconocimiento de voz no disponible.\nUsa Google Chrome en Android.');
+      return;
+    }
+
+    recognition = new SR();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = navigator.language || 'es-ES';
+
+    recognition.onstart = () => {
+      isRecording = true;
+      micBtn.classList.add('pressing');
+      setStatus('Grabando... suelta cuando termines', 'recording');
+    };
+
+    recognition.onresult = (e) => {
+      finalTranscript = '';
+      let interim = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript + ' ';
+        else interim += e.results[i][0].transcript;
+      }
+      renderTranscript(finalTranscript, interim);
+    };
+
+    recognition.onerror = (e) => {
+      if (e.error === 'no-speech') return;
+      if (e.error === 'not-allowed') {
+        showError('Micrófono bloqueado.\n\nVe a: Ajustes → Apps → Chrome → Permisos → Micrófono → Permitir');
+      } else if (e.error === 'network') {
+        showError('Sin internet. Necesitas conexión para transcribir voz.');
+      } else {
+        showError('Error: ' + e.error);
+      }
+      forceStop();
+    };
+
+    recognition.onend = () => {
+      if (isRecording) {
+        try { recognition.start(); } catch(ex) { forceStop(); }
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch(e) {
+      showError('No se pudo iniciar el micrófono.\nError: ' + e.message);
+    }
+  }
+
+  function stopRecording() {
+    if (!isRecording) return;
+    isRecording = false;
+    micBtn.classList.remove('pressing');
+    if (recognition) { recognition.onend = null; try { recognition.stop(); } catch(e){} }
+
+    const text = finalTranscript.trim();
+    if (text) {
+      setStatus('Mensaje listo ✓', 'ready');
+      showResults(text);
+    } else {
+      setStatus('Nada captado, inténtalo de nuevo', '');
+    }
+  }
+
+  function forceStop() {
+    isRecording = false;
+    micBtn.classList.remove('pressing');
+    if (recognition) { recognition.onend = null; try { recognition.stop(); } catch(e){} }
+    setStatus('Listo', '');
+  }
+
+  function renderTranscript(final, interim) {
+    const el = document.getElementById('transcriptText');
+    const ph = document.getElementById('placeholder');
+    const area = document.getElementById('transcriptArea');
+    const html = final + (interim ? '<span class="interim">' + interim + '</span>' : '');
+    if (html.trim()) {
+      el.innerHTML = html;
+      ph.style.display = 'none';
+      area.classList.add('has-text');
+      area.scrollTop = area.scrollHeight;
+    }
+  }
+
+  function clearTranscript() {
+    document.getElementById('transcriptText').innerHTML = '';
+    document.getElementById('placeholder').style.display = 'block';
+    document.getElementById('transcriptArea').classList.remove('has-text');
+  }
+
+  function showResults(text) {
+    document.getElementById('subjectValue').textContent = generateSubject(text);
+    document.getElementById('subjectPreview').classList.add('visible');
+    document.getElementById('sendBtn').classList.add('visible');
+    document.getElementById('clearBtn').classList.add('visible');
+  }
+
+  function hideResults() {
+    ['subjectPreview','sendBtn','clearBtn'].forEach(id => document.getElementById(id).classList.remove('visible'));
+  }
+
+  function setStatus(msg, type) {
+    const el = document.getElementById('status');
+    document.getElementById('statusMsg').textContent = msg;
+    el.className = 'status ' + type;
+  }
+
+  function generateSubject(text) {
+    const clean = text.replace(/\s+/g,' ').trim();
+    const first = clean.match(/[^.!?]+[.!?]?/)?.[0]?.trim() || clean;
+    if (first.length <= 65) return cap(first);
+    const cut = first.substring(0,65);
+    const ls = cut.lastIndexOf(' ');
+    return cap(ls > 30 ? cut.substring(0,ls)+'…' : cut+'…');
+  }
+
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  function sendEmail() {
+    const text = finalTranscript.trim();
+    if (!text) return;
+    const subject = document.getElementById('subjectValue').textContent;
+    const date = new Date().toLocaleDateString('es-ES',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    const body = `${text}\n\n—\nMensaje de voz grabado el ${date}\nVía VozMail`;
+    window.location.href = `mailto:${encodeURIComponent(USER_EMAIL)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    showToast('Abriendo Gmail...');
+  }
+
+  function clearAll() {
+    finalTranscript = '';
+    clearTranscript();
+    hideResults();
+    hideError();
+    setStatus('Listo', '');
+  }
+
+  function showError(msg) {
+    document.getElementById('errorText').textContent = msg;
+    document.getElementById('errorBox').classList.add('visible');
+  }
+
+  function hideError() {
+    document.getElementById('errorBox').clas
