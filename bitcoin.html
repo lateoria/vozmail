@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0a0f">
+<title>Bitcoin Analysis Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0f;--surface:#13131a;--surface2:#1a1a25;--border:#1e1e2e;--accent:#f7931a;--accent2:#ff6b00;--green:#00d4aa;--red:#ff4466;--text:#e8e8f0;--muted:#5a5a7a;--blue:#4a9eff}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;padding:20px}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 40% at 50% 0%,rgba(247,147,26,.06) 0%,transparent 70%);pointer-events:none;z-index:0}
+.container{position:relative;z-index:1;max-width:1400px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.logo{font-size:26px;font-weight:800;letter-spacing:-.5px}.logo span{color:var(--accent)}
+.header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.badge{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);background:var(--surface);border:1px solid var(--border);padding:6px 14px;border-radius:20px}
+.badge.live{color:var(--green);border-color:rgba(0,212,170,.3)}
+.badge.live::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:6px;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.refresh-btn{background:var(--surface);border:1px solid var(--border);color:var(--accent);font-family:'DM Mono',monospace;font-size:12px;padding:6px 14px;border-radius:20px;cursor:pointer;transition:all .2s}
+.refresh-btn:hover{border-color:var(--accent);background:rgba(247,147,26,.08)}
+
+/* Grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:20px}
+.grid-full{grid-column:1/-1}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;transition:border-color .3s}
+.card:hover{border-color:rgba(247,147,26,.2)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.card-icon{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.card-icon.btc{background:rgba(247,147,26,.12);color:var(--accent)}
+.card-icon.green{background:rgba(0,212,170,.12);color:var(--green)}
+.card-icon.red{background:rgba(255,68,102,.12);color:var(--red)}
+.card-icon.blue{background:rgba(74,158,255,.12);color:var(--blue)}
+
+/* KPI */
+.kpi-value{font-family:'DM Mono',monospace;font-size:28px;font-weight:700;margin-bottom:4px}
+.kpi-sub{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)}
+.kpi-change{font-family:'DM Mono',monospace;font-size:13px;font-weight:700;padding:3px 8px;border-radius:6px;display:inline-block}
+.kpi-change.up{background:rgba(0,212,170,.12);color:var(--green)}
+.kpi-change.down{background:rgba(255,68,102,.12);color:var(--red)}
+
+/* Chart */
+.chart-container{width:100%;height:280px;position:relative}
+canvas{width:100%!important;height:100%!important}
+
+/* Table */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px}
+th{text-align:left;padding:10px 12px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid rgba(30,30,46,.5);white-space:nowrap}
+tr:hover td{background:rgba(247,147,26,.03)}
+
+/* Prediction */
+.pred-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(30,30,46,.5)}
+.pred-row:last-child{border:none}
+.pred-label{font-family:'DM Mono',monospace;font-size:13px;color:var(--muted)}
+.pred-value{font-family:'DM Mono',monospace;font-size:14px;font-weight:700}
+.pred-conf{font-family:'DM Mono',monospace;font-size:11px;padding:2px 8px;border-radius:4px}
+.conf-high{background:rgba(0,212,170,.12);color:var(--green)}
+.conf-med{background:rgba(247,147,26,.12);color:var(--accent)}
+.conf-low{background:rgba(255,68,102,.12);color:var(--red)}
+
+/* Signal */
+.signal-box{text-align:center;padding:20px;border-radius:12px;margin-top:12px}
+.signal-box.buy{background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2)}
+.signal-box.sell{background:rgba(255,68,102,.08);border:1px solid rgba(255,68,102,.2)}
+.signal-box.hold{background:rgba(247,147,26,.08);border:1px solid rgba(247,147,26,.2)}
+.signal-text{font-size:24px;font-weight:800;margin-bottom:4px}
+.signal-box.buy .signal-text{color:var(--green)}
+.signal-box.sell .signal-text{color:var(--red)}
+.signal-box.hold .signal-text{color:var(--accent)}
+.signal-reason{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)}
+
+/* Backtest */
+.bt-stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(30,30,46,.5)}
+.bt-stat:last-child{border:none}
+.bt-stat-label{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)}
+.bt-stat-value{font-family:'DM Mono',monospace;font-size:13px;font-weight:700}
+
+/* Progress bar */
+.progress-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;border-radius:3px;transition:width .5s}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+.tab{font-family:'DM Mono',monospace;font-size:11px;padding:6px 14px;border-radius:8px;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:all .2s}
+.tab.active{background:rgba(247,147,26,.1);border-color:var(--accent);color:var(--accent)}
+
+/* Loader */
+.loader{display:flex;align-items:center;justify-content:center;padding:60px;flex-direction:column;gap:12px}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-text{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)}
+
+/* Gauge */
+.gauge-container{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;padding:10px 0}
+.gauge-value{font-family:'DM Mono',monospace;font-size:36px;font-weight:700}
+.gauge-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)}
+
+/* Responsive */
+@media(max-width:768px){
+  .grid{grid-template-columns:1fr}
+  .kpi-value{font-size:22px}
+  header{flex-direction:column;align-items:flex-start}
+}
+
+/* Mini KPI row */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.kpi-mini{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.kpi-mini-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.kpi-mini-value{font-family:'DM Mono',monospace;font-size:18px;font-weight:700}
+.kpi-mini-change{font-family:'DM Mono',monospace;font-size:11px;margin-top:4px}
+
+/* Backtest chart */
+.bt-legend{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
+.bt-legend-item{display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)}
+.bt-legend-dot{width:8px;height:8px;border-radius:50%}
+
+/* Fear & Greed */
+.fg-meter{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:12px 0 8px}
+.fg-segment{flex:1}
+.fg-labels{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo"><span>BTC</span> Analysis</div>
+    <div class="header-right">
+      <span class="badge live">Datos en vivo</span>
+      <span class="badge" id="lastUpdate">Cargando...</span>
+      <button class="refresh-btn" onclick="init()">Actualizar</button>
+      <a href="index.html" class="refresh-btn" style="text-decoration:none">VozMail</a>
+    </div>
+  </header>
+
+  <!-- KPI Row -->
+  <div class="kpi-row" id="kpiRow">
+    <div class="kpi-mini"><div class="kpi-mini-label">Precio</div><div class="kpi-mini-value" id="kPrice">--</div><div class="kpi-mini-change" id="kPriceChange">--</div></div>
+    <div class="kpi-mini"><div class="kpi-mini-label">Market Cap</div><div class="kpi-mini-value" id="kMcap">--</div></div>
+    <div class="kpi-mini"><div class="kpi-mini-label">Volumen 24h</div><div class="kpi-mini-value" id="kVol">--</div></div>
+    <div class="kpi-mini"><div class="kpi-mini-label">Dominancia</div><div class="kpi-mini-value" id="kDom">--</div></div>
+    <div class="kpi-mini"><div class="kpi-mini-label">ATH</div><div class="kpi-mini-value" id="kAth">--</div><div class="kpi-mini-change" id="kAthChange">--</div></div>
+    <div class="kpi-mini"><div class="kpi-mini-label">Supply Circ.</div><div class="kpi-mini-value" id="kSupply">--</div></div>
+  </div>
+
+  <div class="grid">
+    <!-- Price Chart -->
+    <div class="card grid-full">
+      <div class="card-header">
+        <div class="card-title">Precio Historico</div>
+        <div class="tabs" id="chartTabs">
+          <button class="tab" data-days="7" onclick="changeChartDays(7)">7D</button>
+          <button class="tab" data-days="30" onclick="changeChartDays(30)">30D</button>
+          <button class="tab active" data-days="90" onclick="changeChartDays(90)">90D</button>
+          <button class="tab" data-days="365" onclick="changeChartDays(365)">1A</button>
+        </div>
+      </div>
+      <div class="chart-container"><canvas id="priceChart"></canvas></div>
+    </div>
+
+    <!-- Technical Indicators -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Indicadores Tecnicos</div>
+        <div class="card-icon blue">T</div>
+      </div>
+      <div id="indicators">
+        <div class="pred-row"><span class="pred-label">RSI (14)</span><span class="pred-value" id="indRsi">--</span></div>
+        <div class="pred-row"><span class="pred-label">SMA 20</span><span class="pred-value" id="indSma20">--</span></div>
+        <div class="pred-row"><span class="pred-label">SMA 50</span><span class="pred-value" id="indSma50">--</span></div>
+        <div class="pred-row"><span class="pred-label">EMA 12</span><span class="pred-value" id="indEma12">--</span></div>
+        <div class="pred-row"><span class="pred-label">EMA 26</span><span class="pred-value" id="indEma26">--</span></div>
+        <div class="pred-row"><span class="pred-label">MACD</span><span class="pred-value" id="indMacd">--</span></div>
+        <div class="pred-row"><span class="pred-label">Bollinger Sup.</span><span class="pred-value" id="indBbUp">--</span></div>
+        <div class="pred-row"><span class="pred-label">Bollinger Inf.</span><span class="pred-value" id="indBbLow">--</span></div>
+        <div class="pred-row"><span class="pred-label">Volatilidad 30d</span><span class="pred-value" id="indVol">--</span></div>
+      </div>
+    </div>
+
+    <!-- Prediction -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Prediccion de Precio</div>
+        <div class="card-icon btc">P</div>
+      </div>
+      <div id="predictions">
+        <div class="pred-row"><span class="pred-label">24 horas</span><span class="pred-value" id="pred1d">--</span></div>
+        <div class="pred-row"><span class="pred-label">7 dias</span><span class="pred-value" id="pred7d">--</span></div>
+        <div class="pred-row"><span class="pred-label">30 dias</span><span class="pred-value" id="pred30d">--</span></div>
+        <div class="pred-row"><span class="pred-label">Soporte</span><span class="pred-value" id="predSupport">--</span></div>
+        <div class="pred-row"><span class="pred-label">Resistencia</span><span class="pred-value" id="predResist">--</span></div>
+      </div>
+      <div class="signal-box hold" id="signalBox">
+        <div class="signal-text" id="signalText">HOLD</div>
+        <div class="signal-reason" id="signalReason">Calculando...</div>
+      </div>
+    </div>
+
+    <!-- Fear & Greed + Sentiment -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Sentimiento del Mercado</div>
+        <div class="card-icon green">S</div>
+      </div>
+      <div class="gauge-container">
+        <div class="gauge-value" id="fgValue">--</div>
+        <div class="gauge-label" id="fgLabel">Fear & Greed Index</div>
+      </div>
+      <div class="fg-meter">
+        <div class="fg-segment" style="background:#ff4466"></div>
+        <div class="fg-segment" style="background:#ff8844"></div>
+        <div class="fg-segment" style="background:#f7931a"></div>
+        <div class="fg-segment" style="background:#88cc44"></div>
+        <div class="fg-segment" style="background:#00d4aa"></div>
+      </div>
+      <div class="fg-labels"><span>Miedo Extremo</span><span>Neutral</span><span>Codicia Extrema</span></div>
+      <div style="margin-top:16px">
+        <div class="pred-row"><span class="pred-label">Tendencia RSI</span><span class="pred-value" id="sentRsi">--</span></div>
+        <div class="pred-row"><span class="pred-label">Tendencia MACD</span><span class="pred-value" id="sentMacd">--</span></div>
+        <div class="pred-row"><span class="pred-label">Precio vs SMA50</span><span class="pred-value" id="sentSma">--</span></div>
+        <div class="pred-row"><span class="pred-label">Volatilidad</span><span class="pred-value" id="sentVol">--</span></div>
+      </div>
+    </div>
+
+    <!-- Backtest Results -->
+    <div class="card grid-full">
+      <div class="card-header">
+        <div class="card-title">Backtesting — Validacion con Datos Reales</div>
+        <div class="card-icon red">B</div>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:16px">
+        Se aplica el mismo modelo predictivo a datos historicos y se compara con los precios reales. Periodos de 90 dias evaluados con ventana deslizante.
+      </p>
+      <div class="tabs" id="btTabs">
+        <button class="tab active" onclick="switchBtView('stats')">Estadisticas</button>
+        <button class="tab" onclick="switchBtView('chart')">Grafico</button>
+        <button class="tab" onclick="switchBtView('trades')">Operaciones</button>
+      </div>
+
+      <!-- Stats view -->
+      <div id="btStats">
+        <div class="bt-stat"><span class="bt-stat-label">Precision direccional</span><span class="bt-stat-value" id="btAccuracy">--</span></div>
+        <div class="bt-stat"><span class="bt-stat-label">Error medio absoluto (MAE)</span><span class="bt-stat-value" id="btMae">--</span></div>
+        <div class="bt-stat"><span class="bt-stat-label">Error cuadratico medio (RMSE)</span><span class="bt-stat-value" id="btRmse">--</span></div>
+        <div class="bt-stat"><span class="bt-stat-label">Predicciones evaluadas</span><span class="bt-stat-value" id="btCount">--</span></div>
+        <div class="bt-stat"><span class="bt-stat-label">Rentabilidad modelo</span><span class="bt-stat-value" id="btReturn">--</span></div>
+        <div class="bt-stat"><span class="bt-stat-label">Rentabilidad Buy & Hold</span><span class="bt-stat-value" id="btBh">--</span></div>
+        <div class="bt-stat"><span class="bt-stat-label">Max Drawdown</span><span class="bt-stat-value" id="btDd">--</span></div>
+        <div class="bt-stat"><span class="bt-stat-label">Sharpe Ratio</span><span class="bt-stat-value" id="btSharpe">--</span></div>
+        <div style="margin-top:12px">
+          <div class="kpi-mini-label">Fiabilidad del modelo</div>
+          <div class="progress-bar"><div class="progress-fill" id="btBar" style="width:0%;background:var(--accent)"></div></div>
+        </div>
+      </div>
+
+      <!-- Chart view -->
+      <div id="btChart" style="display:none">
+        <div class="chart-container"><canvas id="backtestChart"></canvas></div>
+        <div class="bt-legend">
+          <div class="bt-legend-item"><div class="bt-legend-dot" style="background:var(--accent)"></div>Precio Real</div>
+          <div class="bt-legend-item"><div class="bt-legend-dot" style="background:var(--blue)"></div>Prediccion</div>
+          <div class="bt-legend-item"><div class="bt-legend-dot" style="background:rgba(0,212,170,.5)"></div>Acierto</div>
+          <div class="bt-legend-item"><div class="bt-legend-dot" style="background:rgba(255,68,102,.5)"></div>Fallo</div>
+        </div>
+      </div>
+
+      <!-- Trades view -->
+      <div id="btTrades" style="display:none">
+        <div class="table-wrap">
+          <table id="tradesTable">
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Precio</th><th>Prediccion</th><th>Real</th><th>Error</th><th>Resultado</th></tr></thead>
+            <tbody id="tradesBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== CONFIG ====================
+const API_BASE = 'https://api.coingecko.com/api/v3';
+let chartDays = 90;
+let priceHistory = [];
+let priceChart = null;
+let backtestChart = null;
+
+// ==================== UTILS ====================
+const fmt = (n, d=2) => n != null ? n.toLocaleString('es-ES', {minimumFractionDigits:d, maximumFractionDigits:d}) : '--';
+const fmtUsd = (n, d=0) => n != null ? '$' + n.toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d}) : '--';
+const fmtPct = (n) => n != null ? (n >= 0 ? '+' : '') + n.toFixed(2) + '%' : '--';
+const fmtBig = (n) => {
+  if (n == null) return '--';
+  if (n >= 1e12) return '$' + (n/1e12).toFixed(2) + 'T';
+  if (n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M';
+  return fmtUsd(n);
+};
+
+// ==================== TECHNICAL ANALYSIS ====================
+function calcSMA(data, period) {
+  const result = [];
+  for (let i = 0; i < data.length; i++) {
+    if (i < period - 1) { result.push(null); continue; }
+    let sum = 0;
+    for (let j = i - period + 1; j <= i; j++) sum += data[j];
+    result.push(sum / period);
+  }
+  return result;
+}
+
+function calcEMA(data, period) {
+  const k = 2 / (period + 1);
+  const result = [data[0]];
+  for (let i = 1; i < data.length; i++) {
+    result.push(data[i] * k + result[i-1] * (1 - k));
+  }
+  return result;
+}
+
+function calcRSI(data, period = 14) {
+  if (data.length < period + 1) return [];
+  const changes = [];
+  for (let i = 1; i < data.length; i++) changes.push(data[i] - data[i-1]);
+
+  let avgGain = 0, avgLoss = 0;
+  for (let i = 0; i < period; i++) {
+    if (changes[i] > 0) avgGain += changes[i];
+    else avgLoss += Math.abs(changes[i]);
+  }
+  avgGain /= period;
+  avgLoss /= period;
+
+  const rsi = new Array(period).fill(null);
+  rsi.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss));
+
+  for (let i = period; i < changes.length; i++) {
+    const gain = changes[i] > 0 ? changes[i] : 0;
+    const loss = changes[i] < 0 ? Math.abs(changes[i]) : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    rsi.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss));
+  }
+  return rsi;
+}
+
+function calcMACD(data) {
+  const ema12 = calcEMA(data, 12);
+  const ema26 = calcEMA(data, 26);
+  const macdLine = ema12.map((v, i) => v - ema26[i]);
+  const signal = calcEMA(macdLine, 9);
+  const histogram = macdLine.map((v, i) => v - signal[i]);
+  return { macdLine, signal, histogram };
+}
+
+function calcBollinger(data, period = 20, mult = 2) {
+  const sma = calcSMA(data, period);
+  const upper = [], lower = [];
+  for (let i = 0; i < data.length; i++) {
+    if (sma[i] == null) { upper.push(null); lower.push(null); continue; }
+    let variance = 0;
+    for (let j = i - period + 1; j <= i; j++) variance += Math.pow(data[j] - sma[i], 2);
+    const std = Math.sqrt(variance / period);
+    upper.push(sma[i] + mult * std);
+    lower.push(sma[i] - mult * std);
+  }
+  return { sma, upper, lower };
+}
+
+function calcVolatility(data, period = 30) {
+  if (data.length < period) return null;
+  const returns = [];
+  const slice = data.slice(-period);
+  for (let i = 1; i < slice.length; i++) returns.push(Math.log(slice[i] / slice[i-1]));
+  const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+  const variance = returns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / returns.length;
+  return Math.sqrt(variance) * Math.sqrt(365) * 100;
+}
+
+// ==================== PREDICTION MODEL ====================
+function predictPrice(prices, daysAhead) {
+  const n = prices.length;
+  if (n < 30) return null;
+
+  // 1. Trend component (linear regression on recent data)
+  const recent = prices.slice(-60);
+  const xMean = (recent.length - 1) / 2;
+  const yMean = recent.reduce((a, b) => a + b, 0) / recent.length;
+  let num = 0, den = 0;
+  for (let i = 0; i < recent.length; i++) {
+    num += (i - xMean) * (recent[i] - yMean);
+    den += Math.pow(i - xMean, 2);
+  }
+  const slope = num / den;
+  const trendPred = recent[recent.length - 1] + slope * daysAhead;
+
+  // 2. Mean reversion component (SMA50)
+  const sma50 = prices.slice(-50).reduce((a, b) => a + b, 0) / Math.min(50, n);
+  const currentPrice = prices[n - 1];
+  const deviation = (currentPrice - sma50) / sma50;
+  const meanRevFactor = 1 - deviation * 0.3 * Math.min(daysAhead / 30, 1);
+  const meanRevPred = currentPrice * meanRevFactor;
+
+  // 3. Momentum component (RSI-based)
+  const rsi = calcRSI(prices);
+  const currentRsi = rsi[rsi.length - 1] || 50;
+  let momentumAdj = 0;
+  if (currentRsi > 70) momentumAdj = -0.02 * daysAhead;
+  else if (currentRsi < 30) momentumAdj = 0.02 * daysAhead;
+  else momentumAdj = ((currentRsi - 50) / 500) * daysAhead;
+
+  // 4. MACD momentum
+  const macd = calcMACD(prices);
+  const macdVal = macd.histogram[macd.histogram.length - 1] || 0;
+  const macdAdj = (macdVal / currentPrice) * daysAhead * 0.5;
+
+  // Weighted ensemble
+  const trendWeight = 0.35;
+  const meanRevWeight = 0.30;
+  const momentumWeight = 0.20;
+  const macdWeight = 0.15;
+
+  const prediction = trendPred * trendWeight +
+                     meanRevPred * meanRevWeight +
+                     currentPrice * (1 + momentumAdj) * momentumWeight +
+                     currentPrice * (1 + macdAdj) * macdWeight;
+
+  return Math.max(prediction, currentPrice * 0.5);
+}
+
+function findSupportResistance(prices) {
+  const recent = prices.slice(-30);
+  const sorted = [...recent].sort((a, b) => a - b);
+  const support = sorted[Math.floor(sorted.length * 0.1)];
+  const resistance = sorted[Math.floor(sorted.length * 0.9)];
+
+  // Also check Bollinger bands
+  const bb = calcBollinger(prices);
+  const bbLow = bb.lower[bb.lower.length - 1];
+  const bbUp = bb.upper[bb.upper.length - 1];
+
+  return {
+    support: Math.min(support, bbLow || support),
+    resistance: Math.max(resistance, bbUp || resistance)
+  };
+}
+
+function generateSignal(prices) {
+  const n = prices.length;
+  const current = prices[n - 1];
+  let score = 0;
+  const reasons = [];
+
+  // RSI
+  const rsi = calcRSI(prices);
+  const rsiVal = rsi[rsi.length - 1];
+  if (rsiVal < 30) { score += 2; reasons.push('RSI sobrevendido'); }
+  else if (rsiVal < 40) { score += 1; reasons.push('RSI bajo'); }
+  else if (rsiVal > 70) { score -= 2; reasons.push('RSI sobrecomprado'); }
+  else if (rsiVal > 60) { score -= 1; reasons.push('RSI alto'); }
+
+  // SMA crossover
+  const sma20 = calcSMA(prices, 20);
+  const sma50 = calcSMA(prices, 50);
+  const s20 = sma20[sma20.length - 1];
+  const s50 = sma50[sma50.length - 1];
+  if (s20 && s50) {
+    if (s20 > s50 && current > s20) { score += 2; reasons.push('Golden cross activo'); }
+    else if (s20 < s50 && current < s20) { score -= 2; reasons.push('Death cross activo'); }
+    if (current > s50) { score += 1; reasons.push('Sobre SMA50'); }
+    else { score -= 1; reasons.push('Bajo SMA50'); }
+  }
+
+  // MACD
+  const macd = calcMACD(prices);
+  const hist = macd.histogram;
+  if (hist.length >= 2) {
+    const cur = hist[hist.length - 1];
+    const prev = hist[hist.length - 2];
+    if (cur > 0 && cur > prev) { score += 1; reasons.push('MACD alcista'); }
+    else if (cur < 0 && cur < prev) { score -= 1; reasons.push('MACD bajista'); }
+  }
+
+  // Bollinger
+  const bb = calcBollinger(prices);
+  const bbLow = bb.lower[bb.lower.length - 1];
+  const bbUp = bb.upper[bb.upper.length - 1];
+  if (bbLow && bbUp) {
+    if (current <= bbLow) { score += 2; reasons.push('Toca Bollinger inferior'); }
+    else if (current >= bbUp) { score -= 2; reasons.push('Toca Bollinger superior'); }
+  }
+
+  let signal, cls;
+  if (score >= 3) { signal = 'COMPRAR'; cls = 'buy'; }
+  else if (score <= -3) { signal = 'VENDER'; cls = 'sell'; }
+  else { signal = 'MANTENER'; cls = 'hold'; }
+
+  return { signal, cls, score, reasons: reasons.slice(0, 3).join(' · ') };
+}
+
+// ==================== BACKTESTING ====================
+function runBacktest(allPrices) {
+  // Use first portion as training, rest as test
+  const minTrain = 60;
+  const step = 7; // predict every 7 days
+  const predictionHorizon = 7;
+
+  const predictions = [];
+  let correctDir = 0;
+  let totalPred = 0;
+  let maeSum = 0;
+  let rmseSum = 0;
+
+  // Simulated trades
+  const trades = [];
+  let capital = 10000;
+  let btcHeld = 0;
+  let inPosition = false;
+
+  const equityCurve = [10000];
+  const bhCurve = [10000];
+  const bhStart = allPrices[minTrain];
+
+  for (let i = minTrain; i < allPrices.length - predictionHorizon; i += step) {
+    const trainData = allPrices.slice(0, i + 1);
+    const currentPrice = allPrices[i];
+    const futurePrice = allPrices[i + predictionHorizon];
+
+    const predicted = predictPrice(trainData, predictionHorizon);
+    if (predicted == null) continue;
+
+    const actualChange = futurePrice - currentPrice;
+    const predictedChange = predicted - currentPrice;
+    const error = Math.abs(predicted - futurePrice);
+    const errorPct = (error / futurePrice) * 100;
+
+    const dirCorrect = (actualChange > 0 && predictedChange > 0) || (actualChange < 0 && predictedChange < 0);
+    if (dirCorrect) correctDir++;
+    totalPred++;
+    maeSum += errorPct;
+    rmseSum += Math.pow(errorPct, 2);
+
+    // Trading simulation
+    const sig = generateSignal(trainData);
+    const date = new Date();
+    date.setDate(date.getDate() - (allPrices.length - i));
+
+    if (sig.cls === 'buy' && !inPosition) {
+      btcHeld = capital / currentPrice;
+      capital = 0;
+      inPosition = true;
+      trades.push({
+        date, type: 'COMPRA', price: currentPrice,
+        predicted: predicted, actual: futurePrice,
+        error: errorPct, correct: dirCorrect
+      });
+    } else if (sig.cls === 'sell' && inPosition) {
+      capital = btcHeld * currentPrice;
+      btcHeld = 0;
+      inPosition = false;
+      trades.push({
+        date, type: 'VENTA', price: currentPrice,
+        predicted: predicted, actual: futurePrice,
+        error: errorPct, correct: dirCorrect
+      });
+    } else {
+      trades.push({
+        date, type: inPosition ? 'HOLD+' : 'HOLD', price: currentPrice,
+        predicted: predicted, actual: futurePrice,
+        error: errorPct, correct: dirCorrect
+      });
+    }
+
+    const currentEquity = inPosition ? btcHeld * currentPrice : capital;
+    equityCurve.push(currentEquity);
+    bhCurve.push(10000 * (currentPrice / bhStart));
+
+    predictions.push({ i, currentPrice, predicted, futurePrice, dirCorrect, errorPct });
+  }
+
+  // Final equity
+  const lastPrice = allPrices[allPrices.length - 1];
+  const finalEquity = inPosition ? btcHeld * lastPrice : capital;
+  const bhFinal = 10000 * (lastPrice / bhStart);
+
+  // Max drawdown
+  let maxDD = 0, peak = equityCurve[0];
+  for (const eq of equityCurve) {
+    if (eq > peak) peak = eq;
+    const dd = (peak - eq) / peak * 100;
+    if (dd > maxDD) maxDD = dd;
+  }
+
+  // Sharpe ratio (simplified)
+  const returns = [];
+  for (let i = 1; i < equityCurve.length; i++) {
+    returns.push((equityCurve[i] - equityCurve[i-1]) / equityCurve[i-1]);
+  }
+  const meanRet = returns.reduce((a, b) => a + b, 0) / returns.length;
+  const stdRet = Math.sqrt(returns.reduce((a, b) => a + Math.pow(b - meanRet, 2), 0) / returns.length);
+  const sharpe = stdRet > 0 ? (meanRet / stdRet) * Math.sqrt(52) : 0;
+
+  return {
+    accuracy: totalPred > 0 ? (correctDir / totalPred * 100) : 0,
+    mae: totalPred > 0 ? maeSum / totalPred : 0,
+    rmse: totalPred > 0 ? Math.sqrt(rmseSum / totalPred) : 0,
+    count: totalPred,
+    modelReturn: ((finalEquity - 10000) / 10000 * 100),
+    bhReturn: ((bhFinal - 10000) / 10000 * 100),
+    maxDrawdown: maxDD,
+    sharpe: sharpe,
+    predictions: predictions,
+    trades: trades.slice(-20), // last 20
+    equityCurve,
+    bhCurve
+  };
+}
+
+// ==================== CHART RENDERING (Canvas) ====================
+function drawLineChart(canvas, datasets, labels, opts = {}) {
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+  const pad = { top: 20, right: 16, bottom: 40, left: 70 };
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Find global min/max
+  let allVals = [];
+  datasets.forEach(ds => ds.data.forEach(v => { if (v != null) allVals.push(v); }));
+  const minVal = Math.min(...allVals) * 0.995;
+  const maxVal = Math.max(...allVals) * 1.005;
+  const range = maxVal - minVal || 1;
+
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+
+  const toX = (i) => pad.left + (i / (labels.length - 1)) * chartW;
+  const toY = (v) => pad.top + chartH - ((v - minVal) / range) * chartH;
+
+  // Grid
+  ctx.strokeStyle = 'rgba(30,30,46,0.8)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (chartH / 4) * i;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    const val = maxVal - (range / 4) * i;
+    ctx.fillStyle = '#5a5a7a';
+    ctx.font = '11px "DM Mono", monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(fmtUsd(val, 0), pad.left - 8, y + 4);
+  }
+
+  // X labels
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#5a5a7a';
+  const labelStep = Math.max(1, Math.floor(labels.length / 6));
+  for (let i = 0; i < labels.length; i += labelStep) {
+    ctx.fillText(labels[i], toX(i), H - pad.bottom + 20);
+  }
+
+  // Draw datasets
+  datasets.forEach(ds => {
+    ctx.strokeStyle = ds.color;
+    ctx.lineWidth = ds.width || 2;
+    ctx.setLineDash(ds.dash || []);
+    ctx.beginPath();
+    let started = false;
+    ds.data.forEach((v, i) => {
+      if (v == null) return;
+      const x = toX(i), y = toY(v);
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Fill area for first dataset
+    if (ds.fill) {
+      ctx.lineTo(toX(ds.data.length - 1), pad.top + chartH);
+      ctx.lineTo(toX(0), pad.top + chartH);
+      ctx.closePath();
+      const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
+      grad.addColorStop(0, ds.fillColor || 'rgba(247,147,26,0.15)');
+      grad.addColorStop(1, 'rgba(247,147,26,0)');
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+  });
+
+  // Dots for backtest
+  if (opts.dots) {
+    opts.dots.forEach(dot => {
+      ctx.beginPath();
+      ctx.arc(toX(dot.i), toY(dot.v), 4, 0, Math.PI * 2);
+      ctx.fillStyle = dot.color;
+      ctx.fill();
+    });
+  }
+}
+
+// ==================== FETCH DATA ====================
+async function fetchJSON(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+async function fetchBitcoinData() {
+  const [market, history, global] = await Promise.all([
+    fetchJSON(`${API_BASE}/coins/bitcoin?localization=false&tickers=false&community_data=false&developer_data=false`),
+    fetchJSON(`${API_BASE}/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily`),
+    fetchJSON(`${API_BASE}/global`)
+  ]);
+  return { market, history, global };
+}
+
+async function fetchFearGreed() {
+  try {
+    const res = await fetchJSON('https://api.alternative.me/fng/?limit=1');
+    return res.data[0];
+  } catch {
+    return null;
+  }
+}
+
+// ==================== RENDER ====================
+function renderKPIs(market, global) {
+  const md = market.market_data;
+  document.getElementById('kPrice').textContent = fmtUsd(md.current_price.usd, 0);
+  const change24 = md.price_change_percentage_24h;
+  const changeEl = document.getElementById('kPriceChange');
+  changeEl.textContent = fmtPct(change24);
+  changeEl.style.color = change24 >= 0 ? 'var(--green)' : 'var(--red)';
+
+  document.getElementById('kMcap').textContent = fmtBig(md.market_cap.usd);
+  document.getElementById('kVol').textContent = fmtBig(md.total_volume.usd);
+  document.getElementById('kDom').textContent = fmt(global.data.market_cap_percentage.btc, 1) + '%';
+  document.getElementById('kAth').textContent = fmtUsd(md.ath.usd, 0);
+  const athChange = md.ath_change_percentage.usd;
+  const athEl = document.getElementById('kAthChange');
+  athEl.textContent = fmtPct(athChange);
+  athEl.style.color = athChange >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('kSupply').textContent = fmt(md.circulating_supply / 1e6, 2) + 'M';
+}
+
+function renderIndicators(prices) {
+  const rsi = calcRSI(prices);
+  const sma20 = calcSMA(prices, 20);
+  const sma50 = calcSMA(prices, 50);
+  const ema12 = calcEMA(prices, 12);
+  const ema26 = calcEMA(prices, 26);
+  const macd = calcMACD(prices);
+  const bb = calcBollinger(prices);
+  const vol = calcVolatility(prices);
+
+  const last = arr => arr[arr.length - 1];
+
+  document.getElementById('indRsi').textContent = fmt(last(rsi), 1);
+  document.getElementById('indSma20').textContent = fmtUsd(last(sma20), 0);
+  document.getElementById('indSma50').textContent = fmtUsd(last(sma50), 0);
+  document.getElementById('indEma12').textContent = fmtUsd(last(ema12), 0);
+  document.getElementById('indEma26').textContent = fmtUsd(last(ema26), 0);
+  document.getElementById('indMacd').textContent = fmt(last(macd.histogram), 0);
+  document.getElementById('indBbUp').textContent = fmtUsd(last(bb.upper), 0);
+  document.getElementById('indBbLow').textContent = fmtUsd(last(bb.lower), 0);
+  document.getElementById('indVol').textContent = vol ? fmt(vol, 1) + '%' : '--';
+
+  // Sentiment details
+  const rsiVal = last(rsi);
+  const rsiEl = document.getElementById('sentRsi');
+  if (rsiVal < 30) { rsiEl.textContent = 'Sobrevendido'; rsiEl.style.color = 'var(--green)'; }
+  else if (rsiVal > 70) { rsiEl.textContent = 'Sobrecomprado'; rsiEl.style.color = 'var(--red)'; }
+  else { rsiEl.textContent = 'Neutral'; rsiEl.style.color = 'var(--accent)'; }
+
+  const macdH = last(macd.histogram);
+  const macdEl = document.getElementById('sentMacd');
+  if (macdH > 0) { macdEl.textContent = 'Alcista'; macdEl.style.color = 'var(--green)'; }
+  else { macdEl.textContent = 'Bajista'; macdEl.style.color = 'var(--red)'; }
+
+  const price = prices[prices.length - 1];
+  const s50 = last(sma50);
+  const smaEl = document.getElementById('sentSma');
+  if (s50 && price > s50) { smaEl.textContent = 'Por encima (' + fmtPct((price/s50 - 1)*100) + ')'; smaEl.style.color = 'var(--green)'; }
+  else if (s50) { smaEl.textContent = 'Por debajo (' + fmtPct((price/s50 - 1)*100) + ')'; smaEl.style.color = 'var(--red)'; }
+
+  const volEl = document.getElementById('sentVol');
+  if (vol) {
+    if (vol > 80) { volEl.textContent = 'Muy alta (' + fmt(vol,0) + '%)'; volEl.style.color = 'var(--red)'; }
+    else if (vol > 50) { volEl.textContent = 'Alta (' + fmt(vol,0) + '%)'; volEl.style.color = 'var(--accent)'; }
+    else { volEl.textContent = 'Moderada (' + fmt(vol,0) + '%)'; volEl.style.color = 'var(--green)'; }
+  }
+}
+
+function renderPredictions(prices) {
+  const pred1 = predictPrice(prices, 1);
+  const pred7 = predictPrice(prices, 7);
+  const pred30 = predictPrice(prices, 30);
+  const sr = findSupportResistance(prices);
+  const current = prices[prices.length - 1];
+
+  const setWithColor = (id, val) => {
+    const el = document.getElementById(id);
+    el.textContent = fmtUsd(val, 0);
+    if (val > current) el.style.color = 'var(--green)';
+    else if (val < current) el.style.color = 'var(--red)';
+  };
+
+  setWithColor('pred1d', pred1);
+  setWithColor('pred7d', pred7);
+  setWithColor('pred30d', pred30);
+  document.getElementById('predSupport').textContent = fmtUsd(sr.support, 0);
+  document.getElementById('predResist').textContent = fmtUsd(sr.resistance, 0);
+
+  // Signal
+  const sig = generateSignal(prices);
+  const box = document.getElementById('signalBox');
+  box.className = 'signal-box ' + sig.cls;
+  document.getElementById('signalText').textContent = sig.signal;
+  document.getElementById('signalReason').textContent = sig.reasons || 'Score: ' + sig.score;
+}
+
+function renderFearGreed(fg) {
+  if (!fg) return;
+  const val = parseInt(fg.value);
+  document.getElementById('fgValue').textContent = val;
+  document.getElementById('fgValue').style.color =
+    val <= 25 ? 'var(--red)' : val <= 45 ? 'var(--accent)' : val <= 55 ? 'var(--text)' : val <= 75 ? '#88cc44' : 'var(--green)';
+  document.getElementById('fgLabel').textContent = fg.value_classification;
+}
+
+function renderPriceChart(history, days) {
+  const data = history.prices.slice(-days);
+  const prices = data.map(p => p[1]);
+  const labels = data.map(p => {
+    const d = new Date(p[0]);
+    return d.getDate() + '/' + (d.getMonth() + 1);
+  });
+
+  const sma20 = calcSMA(prices, Math.min(20, Math.floor(prices.length / 3)));
+  const bb = calcBollinger(prices, Math.min(20, Math.floor(prices.length / 3)));
+
+  const canvas = document.getElementById('priceChart');
+  drawLineChart(canvas, [
+    { data: prices, color: '#f7931a', width: 2, fill: true },
+    { data: sma20, color: '#4a9eff', width: 1, dash: [4, 4] },
+    { data: bb.upper, color: 'rgba(255,68,102,0.4)', width: 1, dash: [2, 2] },
+    { data: bb.lower, color: 'rgba(0,212,170,0.4)', width: 1, dash: [2, 2] }
+  ], labels);
+}
+
+function renderBacktest(allPrices) {
+  const bt = runBacktest(allPrices);
+
+  document.getElementById('btAccuracy').textContent = fmt(bt.accuracy, 1) + '%';
+  document.getElementById('btAccuracy').style.color = bt.accuracy >= 55 ? 'var(--green)' : bt.accuracy >= 45 ? 'var(--accent)' : 'var(--red)';
+  document.getElementById('btMae').textContent = fmt(bt.mae, 2) + '%';
+  document.getElementById('btRmse').textContent = fmt(bt.rmse, 2) + '%';
+  document.getElementById('btCount').textContent = bt.count;
+  document.getElementById('btReturn').textContent = fmtPct(bt.modelReturn);
+  document.getElementById('btReturn').style.color = bt.modelReturn >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('btBh').textContent = fmtPct(bt.bhReturn);
+  document.getElementById('btBh').style.color = bt.bhReturn >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('btDd').textContent = fmt(bt.maxDrawdown, 1) + '%';
+  document.getElementById('btDd').style.color = 'var(--red)';
+  document.getElementById('btSharpe').textContent = fmt(bt.sharpe, 2);
+  document.getElementById('btSharpe').style.color = bt.sharpe >= 1 ? 'var(--green)' : bt.sharpe >= 0 ? 'var(--accent)' : 'var(--red)';
+
+  const reliability = Math.min(bt.accuracy, 100);
+  document.getElementById('btBar').style.width = reliability + '%';
+  document.getElementById('btBar').style.background =
+    reliability >= 60 ? 'var(--green)' : reliability >= 50 ? 'var(--accent)' : 'var(--red)';
+
+  // Backtest chart
+  const labels = bt.predictions.map((p, i) => '' + (i + 1));
+  const realData = bt.predictions.map(p => p.futurePrice);
+  const predData = bt.predictions.map(p => p.predicted);
+
+  const dots = bt.predictions.map((p, i) => ({
+    i, v: p.predicted,
+    color: p.dirCorrect ? 'rgba(0,212,170,0.7)' : 'rgba(255,68,102,0.7)'
+  }));
+
+  const canvas = document.getElementById('backtestChart');
+  drawLineChart(canvas, [
+    { data: realData, color: '#f7931a', width: 2 },
+    { data: predData, color: '#4a9eff', width: 1.5, dash: [5, 3] }
+  ], labels, { dots });
+
+  // Trades table
+  const tbody = document.getElementById('tradesBody');
+  tbody.innerHTML = '';
+  bt.trades.forEach(t => {
+    const tr = document.createElement('tr');
+    const typeColor = t.type === 'COMPRA' ? 'var(--green)' : t.type === 'VENTA' ? 'var(--red)' : 'var(--muted)';
+    tr.innerHTML = `
+      <td>${t.date.toLocaleDateString('es-ES', {day:'2-digit',month:'short'})}</td>
+      <td style="color:${typeColor};font-weight:700">${t.type}</td>
+      <td>${fmtUsd(t.price, 0)}</td>
+      <td>${fmtUsd(t.predicted, 0)}</td>
+      <td>${fmtUsd(t.actual, 0)}</td>
+      <td>${fmt(t.error, 1)}%</td>
+      <td style="color:${t.correct ? 'var(--green)' : 'var(--red)'}">${t.correct ? 'OK' : 'FALLO'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function switchBtView(view) {
+  document.getElementById('btStats').style.display = view === 'stats' ? 'block' : 'none';
+  document.getElementById('btChart').style.display = view === 'chart' ? 'block' : 'none';
+  document.getElementById('btTrades').style.display = view === 'trades' ? 'block' : 'none';
+  document.querySelectorAll('#btTabs .tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+
+  if (view === 'chart') {
+    setTimeout(() => {
+      const allPrices = priceHistory.map(p => p[1]);
+      const bt = runBacktest(allPrices);
+      const labels = bt.predictions.map((p, i) => '' + (i + 1));
+      const realData = bt.predictions.map(p => p.futurePrice);
+      const predData = bt.predictions.map(p => p.predicted);
+      const dots = bt.predictions.map((p, i) => ({
+        i, v: p.predicted,
+        color: p.dirCorrect ? 'rgba(0,212,170,0.7)' : 'rgba(255,68,102,0.7)'
+      }));
+      drawLineChart(document.getElementById('backtestChart'), [
+        { data: realData, color: '#f7931a', width: 2 },
+        { data: predData, color: '#4a9eff', width: 1.5, dash: [5, 3] }
+      ], labels, { dots });
+    }, 50);
+  }
+}
+
+function changeChartDays(days) {
+  chartDays = days;
+  document.querySelectorAll('#chartTabs .tab').forEach(t => {
+    t.classList.toggle('active', parseInt(t.dataset.days) === days);
+  });
+  renderPriceChart({ prices: priceHistory }, days);
+}
+
+// ==================== INIT ====================
+async function init() {
+  document.getElementById('lastUpdate').textContent = 'Cargando...';
+
+  try {
+    const [btcData, fg] = await Promise.all([
+      fetchBitcoinData(),
+      fetchFearGreed()
+    ]);
+
+    priceHistory = btcData.history.prices;
+    const prices = priceHistory.map(p => p[1]);
+
+    renderKPIs(btcData.market, btcData.global);
+    renderPriceChart(btcData.history, chartDays);
+    renderIndicators(prices);
+    renderPredictions(prices);
+    renderFearGreed(fg);
+    renderBacktest(prices);
+
+    const now = new Date();
+    document.getElementById('lastUpdate').textContent =
+      now.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'}) + ' UTC';
+
+  } catch (err) {
+    console.error('Error:', err);
+    document.getElementById('lastUpdate').textContent = 'Error al cargar datos';
+  }
+}
+
+// Auto-refresh every 5 minutes
+init();
+setInterval(init, 300000);
+
+// Redraw on resize
+window.addEventListener('resize', () => {
+  if (priceHistory.length) {
+    renderPriceChart({ prices: priceHistory }, chartDays);
+  }
+});
+</script>
+</body>
+</html>
