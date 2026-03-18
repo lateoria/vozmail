@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orlando Parks - Guia de Atracciones</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a12;
+  --surface: #12121c;
+  --card: #181824;
+  --border: #252538;
+  --accent: #7c5cfc;
+  --accent2: #ff6b9d;
+  --accent3: #00d4aa;
+  --gold: #ffd700;
+  --text: #eeeef4;
+  --muted: #6b6b8a;
+  --green: #22c55e;
+  --yellow: #eab308;
+  --orange: #f97316;
+  --red: #ef4444;
+  --pink: #ec4899;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',system-ui,sans-serif; min-height:100vh; }
+
+/* HERO */
+.hero {
+  position:relative; padding:60px 20px 40px; text-align:center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  overflow:hidden;
+}
+.hero::before {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(circle at 30% 20%, rgba(124,92,252,0.15), transparent 50%),
+              radial-gradient(circle at 70% 80%, rgba(255,107,157,0.1), transparent 50%);
+}
+.hero * { position:relative; z-index:1; }
+.hero h1 { font-size:clamp(28px,5vw,48px); font-weight:900; margin-bottom:8px; letter-spacing:-1px; }
+.hero h1 span { background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero p { color:var(--muted); font-size:15px; max-width:500px; margin:0 auto; }
+.park-count { display:inline-flex; align-items:center; gap:6px; background:rgba(124,92,252,0.15); border:1px solid rgba(124,92,252,0.3); color:var(--accent); padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; margin-top:16px; }
+
+/* STATS BAR */
+.stats-bar {
+  display:flex; gap:1px; background:var(--border); border-bottom:1px solid var(--border);
+  overflow-x:auto; -webkit-overflow-scrolling:touch;
+}
+.stat-item {
+  flex:1; min-width:100px; padding:14px 12px; background:var(--surface); text-align:center;
+}
+.stat-num { font-size:22px; font-weight:800; color:var(--accent); }
+.stat-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-top:2px; }
+
+/* CONTROLS */
+.controls {
+  position:sticky; top:0; z-index:100; background:rgba(10,10,18,0.92); backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border); padding:14px 16px;
+}
+.filters { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch; }
+.filters::-webkit-scrollbar { display:none; }
+.filter-btn {
+  flex-shrink:0; padding:8px 16px; border-radius:20px; border:1px solid var(--border);
+  background:var(--surface); color:var(--muted); font-size:12px; font-weight:600;
+  cursor:pointer; transition:all .2s; white-space:nowrap; font-family:inherit;
+}
+.filter-btn:hover, .filter-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.filter-btn.active[data-thrill="1"] { background:var(--green); border-color:var(--green); }
+.filter-btn.active[data-thrill="2"] { background:var(--yellow); border-color:var(--yellow); color:#000; }
+.filter-btn.active[data-thrill="3"] { background:var(--orange); border-color:var(--orange); }
+.filter-btn.active[data-thrill="4"] { background:var(--red); border-color:var(--red); }
+.filter-btn.active[data-thrill="5"] { background:var(--pink); border-color:var(--pink); }
+
+.search-row { display:flex; gap:8px; margin-top:10px; }
+.search-box {
+  flex:1; padding:10px 14px; border-radius:12px; border:1px solid var(--border);
+  background:var(--surface); color:var(--text); font-size:14px; font-family:inherit; outline:none;
+}
+.search-box:focus { border-color:var(--accent); }
+.sort-select {
+  padding:10px 14px; border-radius:12px; border:1px solid var(--border);
+  background:var(--surface); color:var(--text); font-size:13px; font-family:inherit; cursor:pointer; outline:none;
+}
+
+/* SECTION HEADERS */
+.park-section { padding:0 16px; }
+.park-header {
+  display:flex; align-items:center; gap:12px; padding:24px 0 16px;
+  border-bottom:1px solid var(--border); margin-bottom:16px;
+}
+.park-icon { font-size:28px; }
+.park-name { font-size:20px; font-weight:800; letter-spacing:-0.5px; }
+.park-tag {
+  font-size:10px; font-weight:700; padding:4px 10px; border-radius:10px;
+  text-transform:uppercase; letter-spacing:.06em;
+}
+.park-tag.disney { background:rgba(0,120,255,0.15); color:#5ba3ff; }
+.park-tag.universal { background:rgba(124,92,252,0.15); color:var(--accent); }
+.park-tag.seaworld { background:rgba(0,180,216,0.15); color:#00d4d8; }
+.park-tag.busch { background:rgba(34,197,94,0.15); color:var(--green); }
+.attraction-count { font-size:12px; color:var(--muted); margin-left:auto; }
+
+/* CARDS */
+.cards-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:14px; padding-bottom:20px;
+}
+.card {
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  overflow:hidden; transition:all .25s; cursor:default;
+}
+.card:hover { border-color:rgba(124,92,252,0.4); transform:translateY(-2px); box-shadow:0 8px 30px rgba(0,0,0,0.3); }
+.card-img {
+  width:100%; height:180px; object-fit:cover; display:block;
+  background:linear-gradient(135deg,#1a1a2e,#252540);
+}
+.card-body { padding:16px; }
+.card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.card-title { font-size:16px; font-weight:700; line-height:1.3; }
+.thrill-badge {
+  flex-shrink:0; padding:4px 10px; border-radius:8px; font-size:11px; font-weight:700;
+  white-space:nowrap;
+}
+.thrill-1 { background:rgba(34,197,94,0.15); color:var(--green); }
+.thrill-2 { background:rgba(234,179,8,0.15); color:var(--yellow); }
+.thrill-3 { background:rgba(249,115,22,0.15); color:var(--orange); }
+.thrill-4 { background:rgba(239,68,68,0.15); color:var(--red); }
+.thrill-5 { background:rgba(236,72,153,0.15); color:var(--pink); }
+
+.card-type { font-size:11px; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.05em; }
+.card-desc { font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:12px; }
+.card-meta { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.stars { display:flex; gap:2px; }
+.star { color:var(--gold); font-size:14px; }
+.star.empty { color:var(--border); }
+.rating-num { font-size:13px; font-weight:700; color:var(--gold); }
+.meta-tag {
+  font-size:10px; padding:3px 8px; border-radius:6px; background:rgba(255,255,255,0.05);
+  color:var(--muted); display:flex; align-items:center; gap:4px;
+}
+.meta-tag svg { width:12px; height:12px; }
+
+.card-tags { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+.attr-tag {
+  font-size:10px; padding:3px 8px; border-radius:6px; font-weight:600;
+}
+.tag-new { background:rgba(124,92,252,0.15); color:var(--accent); }
+.tag-must { background:rgba(255,107,157,0.15); color:var(--accent2); }
+.tag-kids { background:rgba(0,212,170,0.15); color:var(--accent3); }
+.tag-wet { background:rgba(56,189,248,0.15); color:#38bdf8; }
+.tag-dark { background:rgba(139,92,246,0.15); color:#a78bfa; }
+
+/* NO RESULTS */
+.no-results {
+  text-align:center; padding:60px 20px; color:var(--muted);
+}
+.no-results span { font-size:48px; display:block; margin-bottom:16px; }
+
+/* LEGEND */
+.legend {
+  display:flex; gap:12px; flex-wrap:wrap; justify-content:center;
+  padding:20px; background:var(--surface); border-top:1px solid var(--border);
+}
+.legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); }
+.legend-dot { width:10px; height:10px; border-radius:3px; }
+
+/* FOOTER */
+footer {
+  text-align:center; padding:30px 20px; color:var(--muted); font-size:12px;
+  border-top:1px solid var(--border); background:var(--surface);
+}
+
+@media(max-width:640px) {
+  .cards-grid { grid-template-columns:1fr; }
+  .card-img { height:160px; }
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1><span>Orlando Parks</span> 2026</h1>
+  <p>Todas las atracciones puntuadas por nivel de emocion, con fotos y valoraciones</p>
+  <div class="park-count">🎢 10 Parques &bull; <span id="totalCount">0</span> Atracciones</div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-num" id="statSuave">0</div><div class="stat-label">Suave</div></div>
+  <div class="stat-item"><div class="stat-num" id="statModerado">0</div><div class="stat-label">Moderado</div></div>
+  <div class="stat-item"><div class="stat-num" id="statIntenso">0</div><div class="stat-label">Intenso</div></div>
+  <div class="stat-item"><div class="stat-num" id="statExtremo">0</div><div class="stat-label">Extremo</div></div>
+  <div class="stat-item"><div class="stat-num" id="statInsano">0</div><div class="stat-label">Insano</div></div>
+</div>
+
+<div class="controls">
+  <div class="filters" id="parkFilters">
+    <button class="filter-btn active" data-park="all" onclick="filterPark('all',this)">Todos</button>
+  </div>
+  <div class="filters" id="thrillFilters" style="margin-top:8px;">
+    <button class="filter-btn active" data-thrill="all" onclick="filterThrill('all',this)">Todas</button>
+    <button class="filter-btn" data-thrill="1" onclick="filterThrill(1,this)">🟢 Suave</button>
+    <button class="filter-btn" data-thrill="2" onclick="filterThrill(2,this)">🟡 Moderado</button>
+    <button class="filter-btn" data-thrill="3" onclick="filterThrill(3,this)">🟠 Intenso</button>
+    <button class="filter-btn" data-thrill="4" onclick="filterThrill(4,this)">🔴 Extremo</button>
+    <button class="filter-btn" data-thrill="5" onclick="filterThrill(5,this)">💜 Insano</button>
+  </div>
+  <div class="search-row">
+    <input class="search-box" id="searchBox" type="text" placeholder="Buscar atraccion..." oninput="applyFilters()">
+    <select class="sort-select" id="sortSelect" onchange="applyFilters()">
+      <option value="thrill-desc">Emocion ↓</option>
+      <option value="thrill-asc">Emocion ↑</option>
+      <option value="rating-desc">Puntuacion ↓</option>
+      <option value="rating-asc">Puntuacion ↑</option>
+      <option value="name-asc">A → Z</option>
+    </select>
+  </div>
+</div>
+
+<div id="content"></div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Suave (1)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div>Moderado (2)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div>Intenso (3)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Extremo (4)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--pink)"></div>Insano (5)</div>
+</div>
+
+<footer>Orlando Parks Guide 2026 &bull; Para tu viaje a Orlando</footer>
+
+<script>
+const THRILL_LABELS = {1:'Suave',2:'Moderado',3:'Intenso',4:'Extremo',5:'Insano'};
+const PARK_ICONS = {
+  'Magic Kingdom':'🏰','EPCOT':'🌐','Hollywood Studios':'🎬','Animal Kingdom':'🦁',
+  'Islands of Adventure':'🏝️','Universal Studios Florida':'🎥','Epic Universe':'🪐',
+  'Volcano Bay':'🌋','SeaWorld':'🐬','Busch Gardens Tampa Bay':'🐆'
+};
+const PARK_TAGS = {
+  'Magic Kingdom':'disney','EPCOT':'disney','Hollywood Studios':'disney','Animal Kingdom':'disney',
+  'Islands of Adventure':'universal','Universal Studios Florida':'universal','Epic Universe':'universal',
+  'Volcano Bay':'universal','SeaWorld':'seaworld','Busch Gardens Tampa Bay':'busch'
+};
+
+const ATTRACTIONS = [
+  // ═══════════ MAGIC KINGDOM ═══════════
+  {name:"Space Mountain",park:"Magic Kingdom",type:"Montana Rusa Interior",thrill:4,rating:4.5,
+   img:"https://images.unsplash.com/photo-1568515045052-f9a854d70bfd?w=600&h=400&fit=crop",
+   desc:"Montana rusa en la oscuridad total del espacio. Un clasico imprescindible de Disney.",
+   tags:["must","dark"],wait:"60-90 min",height:"112 cm"},
+  {name:"Big Thunder Mountain Railroad",park:"Magic Kingdom",type:"Montana Rusa",thrill:3,rating:4.3,
+   img:"https://images.unsplash.com/photo-1605898954765-8709ba2b1632?w=600&h=400&fit=crop",
+   desc:"El tren desbocado mas salvaje del oeste. Velocidad y curvas por una mina abandonada.",
+   tags:["must"],wait:"45-70 min",height:"102 cm"},
+  {name:"Splash Mountain",park:"Magic Kingdom",type:"Flume Ride",thrill:3,rating:4.2,
+   img:"https://images.unsplash.com/photo-1596401057633-54a8fe8ef3c0?w=600&h=400&fit=crop",
+   desc:"Paseo en tronco con una caida de 16 metros. Te mojaras garantizado.",
+   tags:["must","wet"],wait:"50-80 min",height:"102 cm"},
+  {name:"Tron Lightcycle Run",park:"Magic Kingdom",type:"Montana Rusa Lanzada",thrill:5,rating:4.8,
+   img:"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop",
+   desc:"Montaña rusa de lanzamiento sobre motos futuristas. La mas rapida de Magic Kingdom.",
+   tags:["must","new"],wait:"70-120 min",height:"122 cm"},
+  {name:"Pirates of the Caribbean",park:"Magic Kingdom",type:"Paseo en Bote",thrill:1,rating:4.4,
+   img:"https://images.unsplash.com/photo-1534430480872-3498386e7856?w=600&h=400&fit=crop",
+   desc:"Navega por escenas de piratas con audio-animatronics increibles. Clasico Disney.",
+   tags:["must","dark","kids"],wait:"20-40 min",height:"Ninguno"},
+  {name:"Haunted Mansion",park:"Magic Kingdom",type:"Paseo Oscuro",thrill:2,rating:4.6,
+   img:"https://images.unsplash.com/photo-1509557965875-b88c97052f0e?w=600&h=400&fit=crop",
+   desc:"Mansion encantada con 999 fantasmas. Efectos especiales clasicos e iconicos.",
+   tags:["must","dark"],wait:"25-45 min",height:"Ninguno"},
+  {name:"Jungle Cruise",park:"Magic Kingdom",type:"Paseo en Bote",thrill:1,rating:3.8,
+   img:"https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=600&h=400&fit=crop",
+   desc:"Crucero por rios del mundo con animales animatronicos y chistes del capitan.",
+   tags:["kids"],wait:"30-50 min",height:"Ninguno"},
+  {name:"Seven Dwarfs Mine Train",park:"Magic Kingdom",type:"Montana Rusa Familiar",thrill:3,rating:4.5,
+   img:"https://images.unsplash.com/photo-1570038815165-ab2e8de06834?w=600&h=400&fit=crop",
+   desc:"Montana rusa familiar con vagones que se balancean. Escenas de los enanitos preciosas.",
+   tags:["must"],wait:"60-100 min",height:"97 cm"},
+  {name:"It's a Small World",park:"Magic Kingdom",type:"Paseo en Bote",thrill:1,rating:3.5,
+   img:"https://images.unsplash.com/photo-1597466599360-3b9775841aec?w=600&h=400&fit=crop",
+   desc:"El clasico paseo en bote con munecas de todo el mundo cantando. Ideal para ninos.",
+   tags:["kids"],wait:"15-25 min",height:"Ninguno"},
+  {name:"Buzz Lightyear's Space Ranger Spin",park:"Magic Kingdom",type:"Ride Interactivo",thrill:2,rating:3.9,
+   img:"https://images.unsplash.com/photo-1608889825205-eebdb9fc5806?w=600&h=400&fit=crop",
+   desc:"Dispara con lasers a objetivos alienígenas mientras giras. Competicion en familia.",
+   tags:["kids"],wait:"20-35 min",height:"Ninguno"},
+
+  // ═══════════ EPCOT ═══════════
+  {name:"Guardians of the Galaxy: Cosmic Rewind",park:"EPCOT",type:"Montana Rusa Interior",thrill:5,rating:4.8,
+   img:"https://images.unsplash.com/photo-1534809027769-b00d750a6bac?w=600&h=400&fit=crop",
+   desc:"Primera montana rusa inversa de Disney. Lanzamiento hacia atras con musica epica.",
+   tags:["must","new","dark"],wait:"80-120 min",height:"107 cm"},
+  {name:"Test Track",park:"EPCOT",type:"Simulador de Velocidad",thrill:4,rating:4.2,
+   img:"https://images.unsplash.com/photo-1558981285-6f0c94958bb6?w=600&h=400&fit=crop",
+   desc:"Disena tu coche y ponlo a prueba a 105 km/h en una pista real.",
+   tags:["must"],wait:"50-80 min",height:"102 cm"},
+  {name:"Frozen Ever After",park:"EPCOT",type:"Paseo en Bote",thrill:2,rating:4.3,
+   img:"https://images.unsplash.com/photo-1578632292335-df3abbb0d586?w=600&h=400&fit=crop",
+   desc:"Viaje al mundo de Frozen con animatronics avanzados. Musica y escenas magicas.",
+   tags:["kids"],wait:"50-80 min",height:"Ninguno"},
+  {name:"Soarin' Around the World",park:"EPCOT",type:"Simulador de Vuelo",thrill:2,rating:4.6,
+   img:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=400&fit=crop",
+   desc:"Vuela sobre las maravillas del mundo con viento, aromas y vistas panoramicas.",
+   tags:["must","kids"],wait:"40-70 min",height:"102 cm"},
+  {name:"Mission: SPACE",park:"EPCOT",type:"Simulador Centrifugo",thrill:5,rating:4.0,
+   img:"https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=600&h=400&fit=crop",
+   desc:"Simulador de lanzamiento espacial con fuerzas G reales. Version naranja muy intensa.",
+   tags:[],wait:"20-40 min",height:"112 cm"},
+  {name:"Remy's Ratatouille Adventure",park:"EPCOT",type:"Paseo 3D",thrill:2,rating:4.1,
+   img:"https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop",
+   desc:"Encogete al tamano de una rata y recorre la cocina de Gusteau. Pantallas 3D inmersivas.",
+   tags:["kids","new"],wait:"40-60 min",height:"Ninguno"},
+  {name:"Spaceship Earth",park:"EPCOT",type:"Paseo Oscuro",thrill:1,rating:4.0,
+   img:"https://images.unsplash.com/photo-1597466599360-3b9775841aec?w=600&h=400&fit=crop",
+   desc:"Viaje a traves de la historia de la comunicacion humana dentro de la iconica esfera.",
+   tags:["kids","dark"],wait:"15-25 min",height:"Ninguno"},
+  {name:"Living with the Land",park:"EPCOT",type:"Paseo en Bote",thrill:1,rating:3.7,
+   img:"https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&h=400&fit=crop",
+   desc:"Paseo por invernaderos reales donde Disney cultiva alimentos con tecnologia futurista.",
+   tags:["kids"],wait:"10-20 min",height:"Ninguno"},
+
+  // ═══════════ HOLLYWOOD STUDIOS ═══════════
+  {name:"Star Wars: Rise of the Resistance",park:"Hollywood Studios",type:"Experiencia Inmersiva",thrill:4,rating:5.0,
+   img:"https://images.unsplash.com/photo-1472457897821-70d3819a0e24?w=600&h=400&fit=crop",
+   desc:"La atraccion mas avanzada del mundo. 18 min de aventura Star Wars con caidas y persecuciones.",
+   tags:["must","dark"],wait:"80-120 min",height:"102 cm"},
+  {name:"Tower of Terror",park:"Hollywood Studios",type:"Torre de Caida",thrill:5,rating:4.7,
+   img:"https://images.unsplash.com/photo-1509557965875-b88c97052f0e?w=600&h=400&fit=crop",
+   desc:"Ascensor embrujado con caidas aleatorias en la oscuridad. Puro terror y adrenalina.",
+   tags:["must","dark"],wait:"40-70 min",height:"102 cm"},
+  {name:"Rock 'n' Roller Coaster",park:"Hollywood Studios",type:"Montana Rusa Lanzada",thrill:5,rating:4.5,
+   img:"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop",
+   desc:"Lanzamiento 0-100 km/h en 2.8 seg con musica de Aerosmith. Loops e inversiones en la oscuridad.",
+   tags:["must","dark"],wait:"50-80 min",height:"122 cm"},
+  {name:"Millennium Falcon: Smugglers Run",park:"Hollywood Studios",type:"Simulador Interactivo",thrill:3,rating:4.2,
+   img:"https://images.unsplash.com/photo-1472457897821-70d3819a0e24?w=600&h=400&fit=crop",
+   desc:"Pilota el Halcon Milenario en una mision de contrabando. Tu controlas la nave.",
+   tags:["must"],wait:"40-70 min",height:"97 cm"},
+  {name:"Slinky Dog Dash",park:"Hollywood Studios",type:"Montana Rusa Familiar",thrill:3,rating:4.3,
+   img:"https://images.unsplash.com/photo-1570038815165-ab2e8de06834?w=600&h=400&fit=crop",
+   desc:"Montana rusa de Toy Story con lanzamiento. Divertida para toda la familia.",
+   tags:["kids"],wait:"60-100 min",height:"97 cm"},
+  {name:"Mickey & Minnie's Runaway Railway",park:"Hollywood Studios",type:"Paseo Oscuro",thrill:2,rating:4.1,
+   img:"https://images.unsplash.com/photo-1608889825205-eebdb9fc5806?w=600&h=400&fit=crop",
+   desc:"Adentrate en un cortometraje de Mickey con tecnologia de pantallas sin gafas.",
+   tags:["kids","new"],wait:"30-50 min",height:"Ninguno"},
+  {name:"Toy Story Mania!",park:"Hollywood Studios",type:"Ride Interactivo",thrill:2,rating:4.4,
+   img:"https://images.unsplash.com/photo-1558981285-6f0c94958bb6?w=600&h=400&fit=crop",
+   desc:"Juego de tiro con lunetas 3D en el mundo de Toy Story. Competicion adictiva.",
+   tags:["kids"],wait:"30-50 min",height:"Ninguno"},
+
+  // ═══════════ ANIMAL KINGDOM ═══════════
+  {name:"Avatar Flight of Passage",park:"Animal Kingdom",type:"Simulador de Vuelo",thrill:4,rating:5.0,
+   img:"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop",
+   desc:"Vuela sobre un banshee en Pandora. La experiencia mas inmersiva de todos los parques Disney.",
+   tags:["must"],wait:"80-150 min",height:"112 cm"},
+  {name:"Expedition Everest",park:"Animal Kingdom",type:"Montana Rusa",thrill:4,rating:4.6,
+   img:"https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=600&h=400&fit=crop",
+   desc:"Montana rusa por el Himalaya con tramo hacia atras y encuentro con el Yeti.",
+   tags:["must"],wait:"40-70 min",height:"112 cm"},
+  {name:"Kilimanjaro Safaris",park:"Animal Kingdom",type:"Safari Real",thrill:1,rating:4.5,
+   img:"https://images.unsplash.com/photo-1516426122078-c23e76319801?w=600&h=400&fit=crop",
+   desc:"Safari real con animales de verdad: jirafas, leones, elefantes en la sabana africana.",
+   tags:["must","kids"],wait:"30-60 min",height:"Ninguno"},
+  {name:"Na'vi River Journey",park:"Animal Kingdom",type:"Paseo en Bote",thrill:1,rating:4.0,
+   img:"https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&h=400&fit=crop",
+   desc:"Paseo tranquilo por el rio bioluminiscente de Pandora. Animatronic mas avanzado de Disney.",
+   tags:["kids","dark"],wait:"50-80 min",height:"Ninguno"},
+  {name:"Dinosaur",park:"Animal Kingdom",type:"Paseo Oscuro",thrill:4,rating:3.8,
+   img:"https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&h=400&fit=crop",
+   desc:"Viaje en el tiempo a la era de los dinosaurios. Movimientos bruscos y sustos.",
+   tags:["dark"],wait:"20-40 min",height:"102 cm"},
+  {name:"Kali River Rapids",park:"Animal Kingdom",type:"Rafting",thrill:3,rating:3.6,
+   img:"https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600&h=400&fit=crop",
+   desc:"Rafting por aguas turbulentas de la selva. Te vas a empapar de pies a cabeza.",
+   tags:["wet"],wait:"25-45 min",height:"97 cm"},
+
+  // ═══════════ ISLANDS OF ADVENTURE ═══════════
+  {name:"Hagrid's Magical Creatures Motorbike Adventure",park:"Islands of Adventure",type:"Montana Rusa Lanzada",thrill:5,rating:5.0,
+   img:"https://images.unsplash.com/photo-1551269901-5c5e14c25df7?w=600&h=400&fit=crop",
+   desc:"La mejor montana rusa del mundo segun votaciones. 7 lanzamientos, caida vertical y criaturas magicas.",
+   tags:["must"],wait:"90-180 min",height:"122 cm"},
+  {name:"VelociCoaster",park:"Islands of Adventure",type:"Montana Rusa Extrema",thrill:5,rating:5.0,
+   img:"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop",
+   desc:"Montana rusa de Jurassic World. 4 inversiones, top hat de 47m y 112 km/h. Pura locura.",
+   tags:["must"],wait:"60-120 min",height:"130 cm"},
+  {name:"The Incredible Hulk Coaster",park:"Islands of Adventure",type:"Montana Rusa Lanzada",thrill:5,rating:4.6,
+   img:"https://images.unsplash.com/photo-1570038815165-ab2e8de06834?w=600&h=400&fit=crop",
+   desc:"Lanzamiento de 0-65 km/h en 2 seg, 7 inversiones. Fuerza gamma pura.",
+   tags:["must"],wait:"30-60 min",height:"137 cm"},
+  {name:"Harry Potter and the Forbidden Journey",park:"Islands of Adventure",type:"Simulador Oscuro",thrill:4,rating:4.7,
+   img:"https://images.unsplash.com/photo-1551269901-5c5e14c25df7?w=600&h=400&fit=crop",
+   desc:"Vuela con Harry sobre Hogwarts. Brazo robotico + pantallas IMAX. Experiencia unica.",
+   tags:["must","dark"],wait:"50-90 min",height:"122 cm"},
+  {name:"Jurassic World River Adventure",park:"Islands of Adventure",type:"Flume Ride",thrill:3,rating:4.1,
+   img:"https://images.unsplash.com/photo-1596401057633-54a8fe8ef3c0?w=600&h=400&fit=crop",
+   desc:"Paseo por Jurassic World con dinosaurios y caida final de 26 metros. Te mojaras.",
+   tags:["wet"],wait:"30-50 min",height:"107 cm"},
+  {name:"The Amazing Adventures of Spider-Man",park:"Islands of Adventure",type:"Simulador 3D",thrill:3,rating:4.4,
+   img:"https://images.unsplash.com/photo-1534809027769-b00d750a6bac?w=600&h=400&fit=crop",
+   desc:"Persecucion 3D con Spider-Man. Movimientos fisicos + pantallas 4K. Pionera en su genero.",
+   tags:["dark"],wait:"20-40 min",height:"102 cm"},
+  {name:"Doctor Doom's Fearfall",park:"Islands of Adventure",type:"Torre de Caida",thrill:4,rating:3.8,
+   img:"https://images.unsplash.com/photo-1509557965875-b88c97052f0e?w=600&h=400&fit=crop",
+   desc:"Torre de lanzamiento y caida libre con vistas a todo el parque.",
+   tags:[],wait:"15-30 min",height:"132 cm"},
+  {name:"Popeye & Bluto's Bilge-Rat Barges",park:"Islands of Adventure",type:"Rafting",thrill:3,rating:3.9,
+   img:"https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600&h=400&fit=crop",
+   desc:"El ride de agua mas mojado de Universal. Es imposible no acabar empapado.",
+   tags:["wet"],wait:"20-40 min",height:"107 cm"},
+  {name:"Cat in the Hat",park:"Islands of Adventure",type:"Paseo Oscuro",thrill:1,rating:3.4,
+   img:"https://images.unsplash.com/photo-1608889825205-eebdb9fc5806?w=600&h=400&fit=crop",
+   desc:"Paseo familiar por el mundo del Dr. Seuss. Ideal para los mas pequeños.",
+   tags:["kids"],wait:"10-20 min",height:"Ninguno"},
+
+  // ═══════════ UNIVERSAL STUDIOS FLORIDA ═══════════
+  {name:"Harry Potter and the Escape from Gringotts",park:"Universal Studios Florida",type:"Montana Rusa Interior 3D",thrill:4,rating:4.6,
+   img:"https://images.unsplash.com/photo-1551269901-5c5e14c25df7?w=600&h=400&fit=crop",
+   desc:"Huye de Gringotts en una vagoneta. Combinacion de montana rusa + simulador 3D epica.",
+   tags:["must","dark"],wait:"50-90 min",height:"107 cm"},
+  {name:"Revenge of the Mummy",park:"Universal Studios Florida",type:"Montana Rusa Interior",thrill:4,rating:4.4,
+   img:"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop",
+   desc:"Montana rusa lanzada en la oscuridad con fuego real y efectos. Sorpresas garantizadas.",
+   tags:["must","dark"],wait:"30-50 min",height:"122 cm"},
+  {name:"Hollywood Rip Ride Rockit",park:"Universal Studios Florida",type:"Montana Rusa",thrill:5,rating:4.2,
+   img:"https://images.unsplash.com/photo-1570038815165-ab2e8de06834?w=600&h=400&fit=crop",
+   desc:"Montana rusa vertical de 51m con tu propia banda sonora. Loop no invertido unico.",
+   tags:[],wait:"30-60 min",height:"130 cm"},
+  {name:"Transformers: The Ride 3D",park:"Universal Studios Florida",type:"Simulador 3D",thrill:3,rating:4.1,
+   img:"https://images.unsplash.com/photo-1534809027769-b00d750a6bac?w=600&h=400&fit=crop",
+   desc:"Batalla entre Autobots y Decepticons con efectos 3D y movimientos intensos.",
+   tags:["dark"],wait:"25-45 min",height:"102 cm"},
+  {name:"MEN IN BLACK Alien Attack",park:"Universal Studios Florida",type:"Ride Interactivo",thrill:2,rating:4.0,
+   img:"https://images.unsplash.com/photo-1558981285-6f0c94958bb6?w=600&h=400&fit=crop",
+   desc:"Dispara a aliens por las calles de Nueva York. Vehiculo gira 360 grados.",
+   tags:[],wait:"20-35 min",height:"107 cm"},
+  {name:"E.T. Adventure",park:"Universal Studios Florida",type:"Paseo Oscuro",thrill:1,rating:3.8,
+   img:"https://images.unsplash.com/photo-1608889825205-eebdb9fc5806?w=600&h=400&fit=crop",
+   desc:"Vuela en bicicleta con E.T. a su planeta. Clasico de Universal, oloroso y nostalgico.",
+   tags:["kids","dark"],wait:"15-30 min",height:"Ninguno"},
+  {name:"Hogwarts Express",park:"Universal Studios Florida",type:"Tren Tematico",thrill:1,rating:4.5,
+   img:"https://images.unsplash.com/photo-1551269901-5c5e14c25df7?w=600&h=400&fit=crop",
+   desc:"Conecta los dos parques Universal. Experiencia diferente en cada sentido. Necesitas entrada a ambos parques.",
+   tags:["kids"],wait:"15-30 min",height:"Ninguno"},
+
+  // ═══════════ EPIC UNIVERSE ═══════════
+  {name:"Starfall Racers",park:"Epic Universe",type:"Montana Rusa Dual",thrill:5,rating:4.9,
+   img:"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop",
+   desc:"Montana rusa dual de lanzamiento en el mundo Celestial Park. Carreras competitivas a alta velocidad.",
+   tags:["must","new"],wait:"60-120 min",height:"122 cm"},
+  {name:"Harry Potter and the Battle at the Ministry",park:"Epic Universe",type:"Montana Rusa Interior",thrill:5,rating:5.0,
+   img:"https://images.unsplash.com/photo-1551269901-5c5e14c25df7?w=600&h=400&fit=crop",
+   desc:"La atraccion estrella de Epic Universe. Montana rusa con tecnologia de pantallas revolucionaria en el Ministerio de Magia.",
+   tags:["must","new","dark"],wait:"90-180 min",height:"107 cm"},
+  {name:"How to Train Your Dragon: Untrainable",park:"Epic Universe",type:"Montana Rusa Familiar",thrill:3,rating:4.5,
+   img:"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop",
+   desc:"Vuela sobre un dragon por la isla de Berk. Montana rusa familiar con animatronics increibles.",
+   tags:["new","kids"],wait:"50-90 min",height:"102 cm"},
+  {name:"Mario Kart: Bowser's Challenge",park:"Epic Universe",type:"Ride AR Interactivo",thrill:3,rating:4.7,
+   img:"https://images.unsplash.com/photo-1566577739112-5180d4bf9390?w=600&h=400&fit=crop",
+   desc:"Compite en Mario Kart con gafas AR. Lanza caparazones y recoge monedas en circuitos reales.",
+   tags:["must","new"],wait:"60-120 min",height:"107 cm"},
+  {name:"Yoshi's Adventure",park:"Epic Universe",type:"Paseo Familiar",thrill:1,rating:4.0,
+   img:"https://images.unsplash.com/photo-1566577739112-5180d4bf9390?w=600&h=400&fit=crop",
+   desc:"Paseo tranquilo en el lomo de Yoshi con vistas al mundo de Super Nintendo.",
+   tags:["new","kids"],wait:"30-50 min",height:"Ninguno"},
+  {name:"Mine-Cart Madness",park:"Epic Universe",type:"Montana Rusa Familiar",thrill:3,rating:4.3,
+   img:"https://images.unsplash.com/photo-1566577739112-5180d4bf9390?w=600&h=400&fit=crop",
+   desc:"Montana rusa tematica de Donkey Kong con vagonetas que giran. Mundo Nintendo.",
+   tags:["new"],wait:"40-70 min",height:"102 cm"},
+  {name:"Curse of the Werewolf",park:"Epic Universe",type:"Montana Rusa Interior",thrill:4,rating:4.6,
+   img:"https://images.unsplash.com/photo-1509557965875-b88c97052f0e?w=600&h=400&fit=crop",
+   desc:"Montana rusa en la oscuridad con tematica de monstruos clasicos de Universal. Atmosfera terrorifica.",
+   tags:["new","dark"],wait:"40-70 min",height:"112 cm"},
+  {name:"Stardust Racers",park:"Epic Universe",type:"Montana Rusa de Lanzamiento",thrill:5,rating:4.8,
+   img:"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop",
+   desc:"Montana rusa dual con lanzamiento a alta velocidad en Celestial Park. Competicion epica.",
+   tags:["new","must"],wait:"50-90 min",height:"122 cm"},
+
+  // ═══════════ VOLCANO BAY ═══════════
+  {name:"Krakatau Aqua Coaster",park:"Volcano Bay",type:"Aqua Coaster",thrill:4,rating:4.5,
+   img:"https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=600&h=400&fit=crop",
+   desc:"Montana rusa acuatica a traves del volcan. Lanzamientos lineales con efectos de agua.",
+   tags:["must","wet"],wait:"40-70 min",height:"107 cm"},
+  {name:"Ko'okiri Body Plunge",park:"Volcano Bay",type:"Tobogan Vertical",thrill:5,rating:4.3,
+   img:"https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=600&h=400&fit=crop",
+   desc:"Caida libre de 38 metros a traves de una trampilla. 70 grados de puro terror acuatico.",
+   tags:["wet"],wait:"30-60 min",height:"122 cm"},
+  {name:"Honu ika Moana",park:"Volcano Bay",type:"Tobogan Multi-Rider",thrill:3,rating:4.1,
+   img:"https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=600&h=400&fit=crop",
+   desc:"Dos toboganes gigantes lado a lado en flotadores familiares. Curvas y olas.",
+   tags:["wet","kids"],wait:"20-40 min",height:"107 cm"},
+  {name:"Punga Racers",park:"Volcano Bay",type:"Tobogan Racer",thrill:3,rating:3.9,
+   img:"https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=600&h=400&fit=crop",
+   desc:"Carreras boca abajo por toboganes con manta raya. 4 carriles para competir.",
+   tags:["wet"],wait:"15-30 min",height:"107 cm"},
+  {name:"TeAwa The Fearless River",park:"Volcano Bay",type:"Rio con Corriente",thrill:2,rating:4.0,
+   img:"https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=600&h=400&fit=crop",
+   desc:"Rio rapido con corrientes turbulentas y olas. Mas intenso que un lazy river normal.",
+   tags:["wet"],wait:"10-20 min",height:"107 cm"},
+  {name:"Waturi Beach",park:"Volcano Bay",type:"Piscina de Olas",thrill:1,rating:4.2,
+   img:"https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=600&h=400&fit=crop",
+   desc:"Piscina gigante con olas al pie del volcan. Perfecta para relajarse entre toboganes.",
+   tags:["wet","kids"],wait:"Sin espera",height:"Ninguno"},
+
+  // ═══════════ SEAWORLD ═══════════
+  {name:"Mako",park:"SeaWorld",type:"Montana Rusa Hyper",thrill:5,rating:4.7,
+   img:"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop",
+   desc:"La montana rusa mas alta y rapida de Orlando. 61m de altura y 117 km/h. Airtime brutal.",
+   tags:["must"],wait:"30-60 min",height:"137 cm"},
+  {name:"Manta",park:"SeaWorld",type:"Montana Rusa Flying",thrill:5,rating:4.5,
+   img:"https://images.unsplash.com/photo-1570038815165-ab2e8de06834?w=600&h=400&fit=crop",
+   desc:"Montana rusa voladora donde vas boca abajo como una manta raya. Sensacion de volar.",
+   tags:["must"],wait:"25-50 min",height:"137 cm"},
+  {name:"Kraken Unleashed",park:"SeaWorld",type:"Montana Rusa VR",thrill:5,rating:4.3,
+   img:"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop",
+   desc:"Montana rusa sin suelo con 7 inversiones. Opcion de VR submarina disponible.",
+   tags:[],wait:"20-40 min",height:"137 cm"},
+  {name:"Ice Breaker",park:"SeaWorld",type:"Montana Rusa de Lanzamiento",thrill:4,rating:4.1,
+   img:"https://images.unsplash.com/photo-1570038815165-ab2e8de06834?w=600&h=400&fit=crop",
+   desc:"Montana rusa con 4 lanzamientos y spike vertical de 28m hacia atras. Compacta pero potente.",
+   tags:["new"],wait:"20-40 min",height:"122 cm"},
+  {name:"Pipeline: The Surf Coaster",park:"SeaWorld",type:"Montana Rusa Stand-Up",thrill:5,rating:4.4,
+   img:"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop",
+   desc:"Primera montana rusa de surf del mundo. De pie sobre una tabla que se mueve independientemente.",
+   tags:["must","new"],wait:"30-50 min",height:"137 cm"},
+  {name:"Journey to Atlantis",park:"SeaWorld",type:"Flume + Coaster",thrill:3,rating:3.7,
+   img:"https://images.unsplash.com/photo-1596401057633-54a8fe8ef3c0?w=600&h=400&fit=crop",
+   desc:"Combinacion de montana rusa y flume ride con tematica de Atlantis. Caida mojada al final.",
+   tags:["wet"],wait:"15-30 min",height:"107 cm"},
+  {name:"Antarctica: Empire of the Penguin",park:"SeaWorld",type:"Paseo Oscuro",thrill:1,rating:3.2,
+   img:"https://images.unsplash.com/photo-1551986782-d0169b3f8fa7?w=600&h=400&fit=crop",
+   desc:"Paseo suave por la Antartida con pinguinos reales al final del recorrido.",
+   tags:["kids"],wait:"10-20 min",height:"Ninguno"},
+  {name:"Infinity Falls",park:"SeaWorld",type:"Rafting",thrill:3,rating:4.0,
+   img:"https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600&h=400&fit=crop",
+   desc:"Rafting con la caida en raft mas alta del mundo (12m). Te vas a empapar.",
+   tags:["wet"],wait:"30-50 min",height:"107 cm"},
+
+  // ═══════════ BUSCH GARDENS TAMPA BAY ═══════════
+  {name:"Iron Gwazi",park:"Busch Gardens Tampa Bay",type:"Hybrid RMC",thrill:5,rating:5.0,
+   img:"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop",
+   desc:"La mejor montana rusa de Florida. Hybrid RMC con 63m, 12 airtime moments y 3 inversiones. Obra maestra.",
+   tags:["must","new"],wait:"30-60 min",height:"137 cm"},
+  {name:"SheiKra",park:"Busch Gardens Tampa Bay",type:"Dive Coaster",thrill:5,rating:4.5,
+   img:"https://images.unsplash.com/photo-1570038815165-ab2e8de06834?w=600&h=400&fit=crop",
+   desc:"Montana rusa de caida vertical de 60m con 90 grados. Te mantiene colgando antes de soltar.",
+   tags:["must"],wait:"20-45 min",height:"137 cm"},
+  {name:"Cheetah Hunt",park:"Busch Gardens Tampa Bay",type:"Montana Rusa Lanzada",thrill:4,rating:4.4,
+   img:"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop",
+   desc:"3 lanzamientos como un guepardo a la caza. Recorrido largo y variado por todo el parque.",
+   tags:["must"],wait:"20-40 min",height:"122 cm"},
+  {name:"Montu",park:"Busch Gardens Tampa Bay",type:"Montana Rusa Invertida",thrill:5,rating:4.6,
+   img:"https://images.unsplash.com/photo-1570038815165-ab2e8de06834?w=600&h=400&fit=crop",
+   desc:"Montana rusa invertida con 7 inversiones y paso subterraneo. Una de las mejores invertidas del mundo.",
+   tags:["must"],wait:"15-30 min",height:"137 cm"},
+  {name:"Kumba",park:"Busch Gardens Tampa Bay",type:"Montana Rusa Sit-Down",thrill:4,rating:4.3,
+   img:"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop",
+   desc:"Clasica B&M con loop vertical y 7 inversiones. Rugido del leon en cada vuelta.",
+   tags:[],wait:"10-25 min",height:"137 cm"},
+  {name:"Cobra's Curse",park:"Busch Gardens Tampa Bay",type:"Montana Rusa Spinning",thrill:3,rating:4.0,
+   img:"https://images.unsplash.com/photo-1570038815165-ab2e8de06834?w=600&h=400&fit=crop",
+   desc:"Montana rusa con vagones que giran 360 grados. Mezcla paseo tematico con coaster.",
+   tags:["kids"],wait:"20-40 min",height:"107 cm"},
+  {name:"Tigris",park:"Busch Gardens Tampa Bay",type:"Montana Rusa Lanzada",thrill:4,rating:4.0,
+   img:"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop",
+   desc:"Lanzamiento delantero y trasero con heartline roll a 30m de altura.",
+   tags:[],wait:"15-30 min",height:"122 cm"},
+  {name:"Stanley Falls Flume",park:"Busch Gardens Tampa Bay",type:"Flume Ride",thrill:2,rating:3.4,
+   img:"https://images.unsplash.com/photo-1596401057633-54a8fe8ef3c0?w=600&h=400&fit=crop",
+   desc:"Clasico flume ride con caida final refrescante. Perfecto para dias de calor.",
+   tags:["wet","kids"],wait:"10-20 min",height:"Ninguno"},
+  {name:"Congo River Rapids",park:"Busch Gardens Tampa Bay",type:"Rafting",thrill:3,rating:3.7,
+   img:"https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600&h=400&fit=crop",
+   desc:"Rafting por el rio Congo con cascadas y geiseres. Empapada asegurada.",
+   tags:["wet"],wait:"15-30 min",height:"107 cm"},
+  {name:"Serengeti Safari",park:"Busch Gardens Tampa Bay",type:"Safari Real",thrill:1,rating:4.3,
+   img:"https://images.unsplash.com/photo-1516426122078-c23e76319801?w=600&h=400&fit=crop",
+   desc:"Safari real con jirafas que puedes alimentar. Experiencia premium en la sabana del parque.",
+   tags:["kids"],wait:"Reserva previa",height:"Ninguno"}
+];
+
+// State
+let currentPark = 'all';
+let currentThrill = 'all';
+
+// Init
+function init() {
+  // Build park filter buttons
+  const parks = [...new Set(ATTRACTIONS.map(a => a.park))];
+  const pf = document.getElementById('parkFilters');
+  parks.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn';
+    btn.dataset.park = p;
+    btn.textContent = (PARK_ICONS[p]||'') + ' ' + p;
+    btn.onclick = () => filterPark(p, btn);
+    pf.appendChild(btn);
+  });
+
+  // Update stats
+  updateStats(ATTRACTIONS);
+  document.getElementById('totalCount').textContent = ATTRACTIONS.length;
+
+  applyFilters();
+}
+
+function updateStats(list) {
+  const counts = {1:0,2:0,3:0,4:0,5:0};
+  list.forEach(a => counts[a.thrill]++);
+  document.getElementById('statSuave').textContent = counts[1];
+  document.getElementById('statModerado').textContent = counts[2];
+  document.getElementById('statIntenso').textContent = counts[3];
+  document.getElementById('statExtremo').textContent = counts[4];
+  document.getElementById('statInsano').textContent = counts[5];
+}
+
+function filterPark(park, btn) {
+  currentPark = park;
+  document.querySelectorAll('#parkFilters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function filterThrill(thrill, btn) {
+  currentThrill = thrill;
+  document.querySelectorAll('#thrillFilters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function applyFilters() {
+  const search = document.getElementById('searchBox').value.toLowerCase().trim();
+  const sort = document.getElementById('sortSelect').value;
+
+  let filtered = ATTRACTIONS.filter(a => {
+    if (currentPark !== 'all' && a.park !== currentPark) return false;
+    if (currentThrill !== 'all' && a.thrill !== currentThrill) return false;
+    if (search && !a.name.toLowerCase().includes(search) && !a.park.toLowerCase().includes(search) && !a.type.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  // Sort
+  filtered.sort((a, b) => {
+    switch(sort) {
+      case 'thrill-desc': return b.thrill - a.thrill || b.rating - a.rating;
+      case 'thrill-asc': return a.thrill - b.thrill || b.rating - a.rating;
+      case 'rating-desc': return b.rating - a.rating || b.thrill - a.thrill;
+      case 'rating-asc': return a.rating - b.rating;
+      case 'name-asc': return a.name.localeCompare(b.name);
+      default: return 0;
+    }
+  });
+
+  updateStats(filtered);
+  renderCards(filtered);
+}
+
+function renderCards(list) {
+  const container = document.getElementById('content');
+
+  if (list.length === 0) {
+    container.innerHTML = '<div class="no-results"><span>🎢</span><p>No se encontraron atracciones con estos filtros</p></div>';
+    return;
+  }
+
+  // Group by park
+  const grouped = {};
+  list.forEach(a => {
+    if (!grouped[a.park]) grouped[a.park] = [];
+    grouped[a.park].push(a);
+  });
+
+  let html = '';
+  for (const [park, attractions] of Object.entries(grouped)) {
+    const tag = PARK_TAGS[park] || 'universal';
+    html += `
+    <div class="park-section">
+      <div class="park-header">
+        <span class="park-icon">${PARK_ICONS[park]||'🎢'}</span>
+        <span class="park-name">${park}</span>
+        <span class="park-tag ${tag}">${tag}</span>
+        <span class="attraction-count">${attractions.length} atracciones</span>
+      </div>
+      <div class="cards-grid">
+        ${attractions.map(a => cardHTML(a)).join('')}
+      </div>
+    </div>`;
+  }
+  container.innerHTML = html;
+
+  // Lazy load images with error handling
+  container.querySelectorAll('.card-img').forEach(img => {
+    img.onerror = function() {
+      this.style.background = 'linear-gradient(135deg,#1a1a2e,#252540)';
+      this.style.display = 'block';
+      this.removeAttribute('src');
+    };
+  });
+}
+
+function cardHTML(a) {
+  const stars = Array.from({length:5}, (_, i) => {
+    if (i + 1 <= Math.floor(a.rating)) return '<span class="star">★</span>';
+    if (i < a.rating) return '<span class="star">★</span>';
+    return '<span class="star empty">★</span>';
+  }).join('');
+
+  const tags = a.tags.map(t => {
+    const map = {
+      'must': ['tag-must','⭐ Imprescindible'],
+      'new': ['tag-new','✨ Nuevo'],
+      'kids': ['tag-kids','👶 Familiar'],
+      'wet': ['tag-wet','💦 Te mojas'],
+      'dark': ['tag-dark','🌙 Oscuro']
+    };
+    const [cls, label] = map[t] || ['',''];
+    return `<span class="attr-tag ${cls}">${label}</span>`;
+  }).join('');
+
+  return `
+  <div class="card">
+    <img class="card-img" src="${a.img}" alt="${a.name}" loading="lazy">
+    <div class="card-body">
+      <div class="card-top">
+        <div class="card-title">${a.name}</div>
+        <div class="thrill-badge thrill-${a.thrill}">${THRILL_LABELS[a.thrill]} ${a.thrill}/5</div>
+      </div>
+      <div class="card-type">${a.type} &bull; ${a.park}</div>
+      <div class="card-desc">${a.desc}</div>
+      <div class="card-meta">
+        <div class="stars">${stars}</div>
+        <span class="rating-num">${a.rating.toFixed(1)}</span>
+        <span class="meta-tag">⏱ ${a.wait}</span>
+        ${a.height !== 'Ninguno' ? `<span class="meta-tag">📏 ${a.height}</span>` : ''}
+      </div>
+      ${tags ? `<div class="card-tags">${tags}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
